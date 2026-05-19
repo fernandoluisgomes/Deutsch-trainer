@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deutsch Trainer V10.2.3b</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f6feb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Deutsch Trainer">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root{--blue:#1f6feb;--green:#16a34a;--red:#dc2626;--yellow:#f59e0b;--bg:#f4f4f4;--card:#fff;--text:#222;--muted:#666}
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:var(--bg);margin:0;color:var(--text)}.container{max-width:920px;margin:auto;padding:14px}
+header{position:sticky;top:0;background:rgba(244,244,244,.96);backdrop-filter:blur(8px);z-index:10;padding:10px 0;border-bottom:1px solid #ddd}
+h1{font-size:28px;text-align:center;margin:8px 0 12px}.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tab{background:#e5e7eb;color:#111;border:0;border-radius:12px;padding:12px;font-weight:bold}.tab.active{background:var(--blue);color:#fff}
+.box{background:var(--card);padding:18px;margin:16px 0;border-radius:16px;box-shadow:0 2px 8px #0001}h2{text-align:center;margin-top:0}
+label{display:block;margin-top:12px;font-weight:bold}input,textarea,select{width:100%;padding:12px;margin-top:6px;border-radius:10px;border:1px solid #ccc;font-size:16px}
+input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;border:0;border-radius:10px;cursor:pointer;font-size:16px;margin:6px 4px 6px 0}.primary{background:var(--blue);color:white}.secondary{background:#e5e7eb}.danger{background:var(--red);color:white}.success{background:var(--green);color:white}.warning{background:var(--yellow);color:white}.small{color:var(--muted);font-size:14px;line-height:1.4}.hidden{display:none!important}
+.notice{padding:12px;border-radius:10px;margin-top:12px;font-weight:bold}.ok{background:#dcfce7;color:#166534}.error{background:#fee2e2;color:#991b1b}.warn{background:#fef3c7;color:#92400e}
+.card{min-height:240px;display:flex;justify-content:center;align-items:center;text-align:center;font-size:36px;font-weight:bold;border-radius:20px;background:#fff;border:3px solid #ddd;cursor:pointer;padding:25px;user-select:none;touch-action:pan-y;transition:.15s}.card.swipe-left{transform:translateX(-35px) rotate(-3deg);border-color:var(--green);background:#dcfce7}.card.swipe-right{transform:translateX(35px) rotate(3deg);border-color:var(--red);background:#fee2e2}.card.revealed{font-size:22px;display:block}.card.green{border-color:var(--green);background:#dcfce7}.card.red{border-color:var(--red);background:#fee2e2}.answer-title{font-size:30px;margin-bottom:12px}.sentence{font-size:18px;font-weight:normal;color:#555;margin-top:14px}.stats{text-align:center;font-weight:bold;margin:10px 0}
+.progressBox{text-align:center;margin:10px 0 14px}
+.progressDots{font-size:22px;letter-spacing:3px;margin:4px 0}
+.dot{color:#d1d5db}.dot.on.low{color:#dc2626}.dot.on.mid{color:#f59e0b}.dot.on.high{color:#1f6feb}.dot.on.done{color:#16a34a}
+.progressText{font-size:14px;color:#555}.hardBadge{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px;font-size:13px;margin-left:4px}.voiceOk{color:#166534;font-weight:bold}.voiceBad{color:#991b1b;font-weight:bold}.voiceListening{color:#1f6feb;font-weight:bold}.micRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.micOn{background:#16a34a!important;color:white}
+.article{font-weight:700;border-radius:8px;padding:2px 6px;margin-right:4px}.article-der{background:#dbeafe;color:#1e40af}.article-die{background:#fee2e2;color:#991b1b}.article-das{background:#dcfce7;color:#166534}.item{padding:12px;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.item-title{font-weight:bold;font-size:18px}.pill{display:inline-block;background:#eef2ff;border-radius:999px;padding:4px 8px;margin:3px;font-size:13px;color:#333}.mastered{background:#dcfce7;color:#166534}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{margin-top:8px}.dup-list{font-size:14px;margin-top:8px}.dup-list li{margin:5px 0}
+@media(max-width:700px){.container{padding:10px}h1{font-size:25px}.card{font-size:30px;min-height:200px}button{width:100%;margin-top:8px}.grid2{grid-template-columns:1fr}.tabs{gap:5px}.tab{font-size:14px;padding:10px 6px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Deutsch Trainer V10.2.3b</h1>
+<div class="tabs">
+<button class="tab active" data-page="train">Treinar</button>
+<button class="tab" data-page="add">Adicionar</button>
+<button class="tab" data-page="db">Base de dados</button>
+<button class="tab" data-page="config">Configuração</button>
+</div>
+</header>
+
+<section id="page-train">
+<div class="box">
+<h2>Treino</h2>
+<div class="stats hidden" id="stats">0 palavras guardadas</div>
+<div id="card" class="card">Adiciona palavras para começar</div>
+<div id="progressBox" class="progressBox"></div>
+<div id="voiceResult" class="small" style="text-align:center;margin:8px 0"></div>
+<div class="micRow">
+<button class="primary" id="micBtn">🎤 Ligar microfone</button>
+<button class="secondary" id="stopMicBtn">Desligar microfone</button>
+</div>
+<div id="answerArea" class="hidden">
+<div id="synonymButtons"></div>
+<button class="danger" id="wrongBtn">Não acertei</button>
+</div>
+<button class="warning" id="skipBtn">Skip — mostrar solução e passar</button>
+<button class="secondary" id="restartBtn">Recomeçar ronda</button>
+
+<div class="box" style="box-shadow:none;background:#f8fafc;margin-top:16px">
+<p class="small" style="text-align:center;margin:0 0 6px">
+Esquerda = acertei/já sei · direita = falhei · toque = revelar/esconder resposta
+</p>
+<p class="small" style="text-align:center;margin:0">
+Usa o microfone para responder em alemão ou revela a carta para escolher manualmente.
+</p>
+</div>
+
+</div>
+</section>
+
+<section id="page-add" class="hidden">
+<div class="box">
+<h2 id="formTitle">Adicionar vocabulário</h2>
+<input type="hidden" id="editIndex" value="">
+<label>Significado em português</label><input id="ptWord" placeholder="ex: casa">
+<label>Resposta em alemão</label><input id="deWord" placeholder="ex: das Haus">
+<label>Sinónimos / respostas aceites</label><input id="synonyms" placeholder="ex: Haus, Zuhause">
+<label>Frase exemplo em alemão</label><textarea id="sentence" rows="2" placeholder="ex: Ich gehe nach Hause."></textarea>
+<label><input type="checkbox" id="masteredCheck"> Palavra dominada / não mostrar no treino</label>
+<p class="small">Ao acertares 7 vezes consecutivas, esta opção é ativada automaticamente. Podes desmarcar manualmente para a palavra voltar ao treino.</p>
+<div id="duplicateNotice"></div>
+<button class="primary" id="saveBtn">Guardar palavra</button>
+<button class="secondary" id="cancelEditBtn">Cancelar edição</button>
+<div id="saveNotice"></div>
+</div>
+
+<div class="box">
+<h2>Importar muitas palavras</h2>
+<p class="small">Formato esperado: <strong>português;alemão;sinónimos;frase</strong><br>Agora podes/deves incluir artigos também nos sinónimos: <strong>der Moment, der Augenblick</strong></p>
+<label>Separador</label><select id="separator"><option value=";">Ponto e vírgula ;</option><option value=",">Vírgula ,</option><option value="tab">Tabulação</option></select>
+<label>Modo de importação</label>
+<select id="importMode">
+<option value="add">Adicionar novos e ignorar duplicados</option>
+<option value="update">Atualizar palavras existentes e adicionar novas</option>
+</select>
+<p class="small">Para atualizar artigos nos sinónimos, usa o modo <strong>Atualizar palavras existentes</strong>.</p>
+<label>Carregar ficheiro CSV/TXT</label><input type="file" id="fileInput" accept=".csv,.txt">
+<label>Importar backup JSON</label><input type="file" id="jsonInput" accept=".json">
+<label>Ou colar aqui</label><textarea id="bulkText" rows="8"></textarea>
+<button class="primary" id="importBtn">Importar vocabulário</button>
+<button class="secondary" id="templateBtn">Descarregar modelo CSV</button>
+<div id="importResult" class="small"></div>
+</div>
+</section>
+
+<section id="page-db" class="hidden">
+<div class="box">
+<h2>Base de dados</h2>
+<div class="grid2">
+<input id="searchBox" placeholder="Pesquisar português, alemão ou sinónimos">
+<select id="sortMode">
+<option value="recent">Mais recentes primeiro</option>
+<option value="pt">Ordenar por português</option>
+<option value="de">Ordenar por alemão</option>
+<option value="mastered">Mostrar dominadas primeiro</option>
+</select>
+</div>
+<div class="actions">
+<button class="secondary" id="exportCsvBtn">Exportar CSV</button>
+<button class="secondary" id="exportJsonBtn">Exportar JSON</button>
+<button class="danger" id="clearBtn">Apagar tudo</button>
+</div>
+<p class="small" id="dbCount"></p>
+<div id="wordList"></div>
+</div>
+</section>
+
+<section id="page-config" class="hidden">
+<div class="box">
+<h2>Configuração</h2>
+
+<label><input type="checkbox" id="speechEnabled" checked> Falar automaticamente a resposta alemã</label>
+<label><input type="checkbox" id="speakArticle" checked> Incluir artigo na pronúncia alemã</label>
+<label><input type="checkbox" id="speakPortuguese" checked> Ler palavra portuguesa automaticamente</label>
+<label><input type="checkbox" id="autoSpeech" checked> Reprodução automática</label>
+
+<hr style="border:0;border-top:1px solid #eee;margin:18px 0">
+
+<label><input type="checkbox" id="voiceEnabled" checked> Ativar reconhecimento de voz</label>
+<label><input type="checkbox" id="requireArticle"> Exigir artigo no reconhecimento</label>
+<p class="small">
+Se “exigir artigo” estiver desligado, a app aceita tanto <strong>Haus</strong> como <strong>das Haus</strong>.
+Se estiver ligado, tens de dizer o artigo quando a resposta guardada tiver artigo.
+</p>
+
+<label>Sensibilidade da comparação</label>
+
+<label><input type="checkbox" id="voiceDebug" checked> Mostrar debug de reconhecimento</label>
+<select id="voiceStrictness">
+<option value="normal">Normal</option>
+<option value="strict">Mais rigorosa</option>
+<option value="loose">Mais permissiva</option>
+</select>
+
+<p class="small">Nota: o reconhecimento de voz depende do browser. Funciona melhor em Chrome/Edge. No iPhone/Safari pode ser limitado.</p>
+
+<hr style="border:0;border-top:1px solid #eee;margin:18px 0">
+
+<h2>Backup individual</h2>
+<p class="small">
+A app não consegue escolher sozinha uma pasta fixa do iCloud nem substituir automaticamente um ficheiro, por segurança do browser.
+Mas podes exportar um backup JSON e guardá-lo manualmente em iCloud Drive, OneDrive ou no iPhone.
+</p>
+<button class="primary" id="backupJsonBtn">Criar backup JSON agora</button>
+<button class="secondary" id="backupCsvBtn">Criar backup CSV agora</button>
+<p class="small" id="lastBackupInfo"></p>
+<label><input type="checkbox" id="backupReminder" checked> Mostrar lembrete quando houver muitas alterações sem backup</label>
+</div>
+</section>
+</div>
+
+<script>
+const STORAGE_KEY="vocabularyGermanTrainer_v5"; // mantém os dados existentes da V5
+const MASTER_LIMIT=7;
+let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;
+let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
+
+function $(id){return document.getElementById(id)}
+function normalize(t){return (t||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function showNotice(target,msg,type="ok"){const b=$(target);b.className="notice "+type;b.innerHTML=msg;setTimeout(()=>{b.className="";b.innerHTML=""},4000)}
+function loadVocabulary(){try{vocabulary=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]")}catch(e){vocabulary=[]}vocabulary.forEach(x=>{if(x.correctStreak===undefined)x.correctStreak=0;if(x.wrongStreak===undefined)x.wrongStreak=0;if(x.difficultyBoost===undefined)x.difficultyBoost=false;if(x.mastered===undefined)x.mastered=false})}
+function saveVocabulary(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
+  changesSinceBackup++;
+  localStorage.setItem("changesSinceBackup", String(changesSinceBackup));
+  updateBackupInfo();
+}
+function parseSynonyms(t){return t?t.split(",").map(s=>s.trim()).filter(Boolean):[]}
+function getAllAnswers(c){const a=[c.de,...(c.synonyms||[])],u=[];for(const x of a)if(x&&!u.some(y=>normalize(y)===normalize(x)))u.push(x);return u}
+function allGermanTerms(c){return getAllAnswers(c).map(normalize)}
+function activeVocabulary(){return vocabulary.filter(x=>!x.mastered)}
+
+function cleanGermanForSpeech(text){
+  const value = (text || "").trim();
+  if($("speakArticle") && $("speakArticle").checked) return value;
+  return value.replace(/^(der|die|das)\s+/i,"").trim() || value;
+}
+
+function escapeHtml(text){
+  return (text || "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+  }[char]));
+}
+
+function formatGerman(text){
+  const value = (text || "").trim();
+  const match = value.match(/^(der|die|das)\s+(.+)$/i);
+  if(!match) return escapeHtml(value);
+  const article = match[1].toLowerCase();
+  const rest = match[2];
+  return `<span class="article article-${article}">${article}</span>${escapeHtml(rest)}`;
+}
+
+function speakGerman(text){
+  if(!$("speechEnabled") || !$("speechEnabled").checked) return;
+  if(!("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(cleanGermanForSpeech(text));
+  utterance.lang = "de-DE";
+  utterance.rate = 0.85;
+  utterance.pitch = 1;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
+function speakPortuguese(text){
+  if(!$("speakPortuguese") || !$("speakPortuguese").checked) return;
+  if(!$("autoSpeech") || !$("autoSpeech").checked) return;
+  if(!("speechSynthesis" in window)) return;
+
+  const utterance = new SpeechSynthesisUtterance(text || "");
+  utterance.lang = "pt-PT";
+  utterance.rate = 0.82;
+  utterance.pitch = 1;
+
+  // Pausa maior para não cortar a resposta alemã anterior.
+  // Não usamos cancel() aqui, porque isso interrompia a voz alemã.
+  setTimeout(() => {
+    if(window.speechSynthesis.speaking){
+      setTimeout(() => window.speechSynthesis.speak(utterance), 900);
+    } else {
+      window.speechSynthesis.speak(utterance);
+    }
+  }, 1300);
+}
+
+function stripGermanArticle(text){
+  return (text||"").replace(/^(der|die|das)\s+/i,"").trim();
+}
+
+function normalizeVoice(text){
+  return normalize((text||"")
+    .replace(/[.,!?;:]/g," ")
+    .replace(/\s+/g," ")
+  );
+}
+
+function voiceForms(text){
+  const original = normalizeVoice(text);
+  const noArticle = normalizeVoice(stripGermanArticle(text));
+  const forms = [original];
+  if(!$("requireArticle") || !$("requireArticle").checked) forms.push(noArticle);
+  return [...new Set(forms.filter(Boolean))];
+}
+
+function levenshtein(a,b){
+  const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+  for(let i=0;i<=a.length;i++)dp[i][0]=i;
+  for(let j=0;j<=b.length;j++)dp[0][j]=j;
+  for(let i=1;i<=a.length;i++){
+    for(let j=1;j<=b.length;j++){
+      dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function isCloseEnough(spoken, expected){
+  if(spoken === expected) return true;
+  const strictness = $("voiceStrictness") ? $("voiceStrictness").value : "normal";
+  if(strictness === "strict") return false;
+  const dist = levenshtein(spoken, expected);
+  const maxLen = Math.max(spoken.length, expected.length);
+  const threshold = strictness === "loose" ? Math.max(1, Math.floor(maxLen*0.28)) : Math.max(1, Math.floor(maxLen*0.18));
+  return maxLen >= 5 && dist <= threshold;
+}
+
+function checkVoiceAnswer(spokenText){
+  if(!currentCard) return false;
+  const spokenForms = voiceForms(spokenText);
+  const accepted = getAllAnswers(currentCard).flatMap(a => voiceForms(a));
+  return spokenForms.some(spoken => accepted.some(exp => isCloseEnough(spoken, exp)));
+}
+
+
+function showVoiceCardFeedback(correct, heard, expected){
+  const card = $("card");
+  if(correct){
+    card.className = "card green revealed";
+    card.innerHTML = `
+      <div class="answer-title">✅ ${formatGerman(expected)}</div>
+    `;
+  }else{
+    card.className = "card red revealed";
+    card.innerHTML = `
+      <div class="answer-title">❌ ${heard || "?"}</div>
+      <div style="margin-top:14px">✅ ${formatGerman(expected)}</div>
+    `;
+  }
+}
+
+function showVoiceDebug(correct, heard, accepted, alternatives){
+  $("voiceResult").innerHTML = `
+    <div class='${correct ? "voiceOk" : "voiceBad"}'>${correct ? "✅" : "❌"} ${heard || "?"}</div>
+    <div class='small' style='margin-top:8px;text-align:left'>
+      <strong>Ouvi:</strong><br>
+      ${alternatives.map((a,i)=>`${i+1}. ${a}`).join("<br>")}
+      <br><br>
+      <strong>Aceites:</strong><br>
+      ${accepted.join(" · ")}
+    </div>
+  `;
+}
+
+function setupRecognition(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz não disponível neste browser.</span>";
+    return null;
+  }
+  const rec = new SpeechRecognition();
+  rec.lang = "de-DE";
+  rec.interimResults = false;
+  rec.continuous = false;
+  rec.maxAlternatives = 5;
+
+  rec.onstart = () => {
+    isListening = true;
+    $("micBtn").classList.add("micOn");
+    $("micBtn").textContent = "🎤 A ouvir...";
+    $("voiceResult").innerHTML = "<span class='voiceListening'>A ouvir... diz a resposta em alemão</span>";
+  };
+
+  rec.onend = () => {
+    isListening = false;
+    $("micBtn").classList.remove("micOn");
+    $("micBtn").textContent = "🎤 Ligar microfone";
+  };
+
+  rec.onerror = (event) => {
+    isListening = false;
+    $("micBtn").classList.remove("micOn");
+    $("micBtn").textContent = "🎤 Ligar microfone";
+    $("voiceResult").innerHTML = `<span class='voiceBad'>Erro no microfone: ${event.error}</span>`;
+  };
+
+  rec.onresult = (event) => {
+    const alternatives = Array.from(event.results[0]).map(r => r.transcript);
+    const best = alternatives[0] || "";
+    const accepted = getAllAnswers(currentCard);
+    const expected = accepted[0] || "";
+    const correct = alternatives.some(t => checkVoiceAnswer(t));
+
+    if($("voiceDebug") && $("voiceDebug").checked){
+      showVoiceDebug(correct, best, accepted, alternatives);
+    }else{
+      $("voiceResult").innerHTML = "";
+    }
+
+    if(correct){
+      speakGerman(best || expected);
+      registerCorrect();
+      correctCount++;
+      removeCurrentFromQueue();
+      showVoiceCardFeedback(true, best, expected);
+      updateStats();
+    }else{
+      speakGerman(expected);
+      registerWrong();
+      wrongCount++;
+      showVoiceCardFeedback(false, best, expected);
+      updateStats();
+    }
+
+    setTimeout(nextCard, 5000);
+  };
+
+  return rec;
+}
+
+function startVoiceRecognition(){
+  if(isListening){ stopVoiceRecognition(); return; }
+  if(!$("voiceEnabled") || !$("voiceEnabled").checked) {
+    $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz desativado na configuração.</span>";
+    return;
+  }
+  if(!currentCard) return;
+  if(!recognition) recognition = setupRecognition();
+  if(!recognition) return;
+  try{
+    recognition.start();
+  }catch(e){
+    $("voiceResult").innerHTML = "<span class='voiceBad'>Não consegui iniciar o microfone.</span>";
+  }
+}
+
+function stopVoiceRecognition(){
+  if(recognition && isListening) recognition.stop();
+  isListening=false;
+  $("micBtn").classList.remove("micOn");
+  $("micBtn").textContent = "🎤 Ligar microfone";
+  $("voiceResult").innerHTML = "";
+}
+
+function switchPage(page){
+["train","add","db","config"].forEach(p=>$("page-"+p).classList.toggle("hidden",p!==page));
+document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.page===page));
+if(page==="db") renderWordList();
+if(page==="train") startPractice();
+}
+
+function findDuplicates(pt,de,synonyms,ignoreIndex=null){
+const incoming=[de,...synonyms].map(normalize).filter(Boolean),ptNorm=normalize(pt);let matches=[];
+vocabulary.forEach((item,i)=>{if(ignoreIndex!==null&&i===ignoreIndex)return;const existingTerms=allGermanTerms(item);const germanOverlap=incoming.filter(x=>existingTerms.includes(x));const ptSame=ptNorm&&normalize(item.pt)===ptNorm;if(ptSame||germanOverlap.length)matches.push({index:i,item,ptSame,germanOverlap})});
+return matches;
+}
+function mergeSynonyms(existing, incoming){
+  const combined = [...(existing || []), ...(incoming || [])];
+  const unique = [];
+  combined.forEach(value => {
+    if(value && !unique.some(x => normalize(x) === normalize(value))) unique.push(value);
+  });
+  return unique;
+}
+function findBestExistingIndex(pt,de,synonyms){
+  const matches = findDuplicates(pt,de,synonyms,null);
+  if(!matches.length) return -1;
+  const exactDe = normalize(de);
+  const exactPt = normalize(pt);
+  const exact = matches.find(m => normalize(m.item.de) === exactDe || normalize(m.item.pt) === exactPt);
+  return exact ? exact.index : matches[0].index;
+}
+function renderDuplicateWarning(){
+const editIndex=$("editIndex").value===""?null:Number($("editIndex").value);
+const matches=findDuplicates($("ptWord").value,$("deWord").value,parseSynonyms($("synonyms").value),editIndex),box=$("duplicateNotice");
+if(!matches.length){box.className="";box.innerHTML="";return matches}
+box.className="notice warn";box.innerHTML="<strong>Possível duplicado encontrado:</strong><ul class='dup-list'>"+matches.map(m=>`<li>${m.item.pt} → ${m.item.de}${m.germanOverlap.length?`<br>Termos repetidos: ${m.germanOverlap.join(", ")}`:""}${m.ptSame?"<br>Mesmo significado em português.":""}</li>`).join("")+"</ul><span class='small'>Podes guardar mesmo assim.</span>";return matches;
+}
+
+function saveWord(){
+const pt=$("ptWord").value.trim(),de=$("deWord").value.trim(),syn=parseSynonyms($("synonyms").value),sent=$("sentence").value.trim();
+if(!pt||!de){showNotice("saveNotice","Preenche pelo menos português e alemão.","error");return}
+const editVal=$("editIndex").value, mastered=$("masteredCheck").checked;
+let previous = editVal==="" ? {} : vocabulary[Number(editVal)];
+const item={pt,de,synonyms:syn,sentence:sent,createdAt:previous.createdAt||Date.now(),updatedAt:Date.now(),correctStreak: mastered ? (previous.correctStreak||MASTER_LIMIT) : 0, wrongStreak: mastered ? 0 : (previous.wrongStreak||0), difficultyBoost: mastered ? false : (previous.difficultyBoost||false), mastered};
+if(editVal===""){vocabulary.push(item);showNotice("saveNotice","Palavra adicionada.","ok")}
+else{vocabulary[Number(editVal)]=item;showNotice("saveNotice","Palavra atualizada.","ok")}
+saveVocabulary();clearForm();renderWordList();startPractice();
+}
+function clearForm(){
+$("editIndex").value="";$("formTitle").textContent="Adicionar vocabulário";$("ptWord").value="";$("deWord").value="";$("synonyms").value="";$("sentence").value="";$("masteredCheck").checked=false;$("duplicateNotice").className="";$("duplicateNotice").innerHTML="";
+}
+function editWord(i){
+const item=vocabulary[i];$("editIndex").value=i;$("formTitle").textContent="Editar vocabulário";$("ptWord").value=item.pt;$("deWord").value=item.de;$("synonyms").value=(item.synonyms||[]).join(", ");$("sentence").value=item.sentence||"";$("masteredCheck").checked=!!item.mastered;switchPage("add");renderDuplicateWarning();window.scrollTo({top:0,behavior:"smooth"});
+}
+function deleteWord(i){if(!confirm("Apagar esta palavra?"))return;vocabulary.splice(i,1);saveVocabulary();renderWordList();startPractice()}
+function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;correctCount=0;wrongCount=0;saveVocabulary();renderWordList();startPractice()}
+
+function buildPracticeQueue(){
+  const queue = [];
+  activeVocabulary().forEach(word => {
+    queue.push(word);
+    if(word.difficultyBoost){
+      queue.push(word);
+      queue.push(word);
+    }
+  });
+  return queue;
+}
+function startPractice(){practiceQueue=buildPracticeQueue();correctCount=0;wrongCount=0;nextCard()}
+function nextCard(){revealed=false;$("answerArea").classList.add("hidden");if($("voiceResult"))$("voiceResult").innerHTML="";const card=$("card");card.className="card";if(practiceQueue.length===0){currentCard=null;card.innerHTML=activeVocabulary().length?"Ronda terminada 🎉":"Não há palavras ativas para treinar";updateStats();return}currentCard=practiceQueue[Math.floor(Math.random()*practiceQueue.length)];
+card.innerHTML=currentCard.pt;
+updateStats();
+renderProgress();
+speakPortuguese(currentCard.pt)
+}
+function revealCard(){
+if(!currentCard)return;
+const card=$("card");
+if(revealed){
+  revealed=false;
+  $("answerArea").classList.add("hidden");
+  card.className="card";
+  card.innerHTML=currentCard.pt;
+  return;
+}
+revealed=true;
+card.className="card revealed";
+const ans=getAllAnswers(currentCard);
+card.innerHTML=`<div class="answer-title">${formatGerman(currentCard.de)}</div><div><strong>Respostas aceites:</strong><br>${ans.join(" · ")}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}<div class="small">Sequência atual: ${currentCard.correctStreak||0}/${MASTER_LIMIT}</div>`;
+renderSynonymButtons(ans);
+$("answerArea").classList.remove("hidden");
+}
+function renderSynonymButtons(ans){$("synonymButtons").innerHTML="";ans.forEach(a=>{const b=document.createElement("button");b.className="success";b.textContent="Acertei: "+a;b.onclick=()=>markCorrect(a);$("synonymButtons").appendChild(b)})}
+
+function registerCorrect(){
+if(!currentCard)return false;
+const idx=vocabulary.indexOf(currentCard);
+if(idx>=0){
+ vocabulary[idx].correctStreak=(vocabulary[idx].correctStreak||0)+1;
+ vocabulary[idx].wrongStreak=0;
+ if(vocabulary[idx].correctStreak>=2){vocabulary[idx].difficultyBoost=false}
+ if(vocabulary[idx].correctStreak>=MASTER_LIMIT){vocabulary[idx].mastered=true;vocabulary[idx].difficultyBoost=false;saveVocabulary();return true}
+ saveVocabulary();
+}
+return false;
+}
+function registerWrong(){
+if(!currentCard)return;
+const idx=vocabulary.indexOf(currentCard);
+if(idx>=0){
+  vocabulary[idx].correctStreak=0;
+  vocabulary[idx].wrongStreak=(vocabulary[idx].wrongStreak||0)+1;
+  vocabulary[idx].mastered=false;
+  if(vocabulary[idx].wrongStreak>=3){vocabulary[idx].difficultyBoost=true}
+  saveVocabulary();
+}
+}
+
+function markKnownBySwipe(){if(!currentCard)return;correctCount++;speakGerman(currentCard.de);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">7 respostas certas consecutivas. Esta palavra já não aparecerá em futuras rondas.</div>`:`<div class="answer-title">Já sei ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Sequência: ${currentCard.correctStreak||0}/${MASTER_LIMIT}</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
+function markCorrect(a){if(!currentCard)return;correctCount++;speakGerman(a);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(a)}</div><div class="small">7 respostas certas consecutivas. Esta palavra já não aparecerá em futuras rondas.</div>`:`<div class="answer-title">Correto ✅</div><div>${formatGerman(a)}</div><div class="small">Sequência: ${currentCard.correctStreak||0}/${MASTER_LIMIT}</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
+function markWrong(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong();$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Errado ❌</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Sequência reiniciada para 0/${MASTER_LIMIT}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
+function skipCard(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong();$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Skip ⏭️</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Sequência reiniciada para 0/${MASTER_LIMIT}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
+function removeCurrentFromQueue(){practiceQueue=practiceQueue.filter(c=>c!==currentCard)}
+function progressLevel(streak){
+  if(streak >= MASTER_LIMIT) return "done";
+  if(streak >= 5) return "high";
+  if(streak >= 3) return "mid";
+  return "low";
+}
+
+function renderProgress(){
+  const box = $("progressBox");
+  if(!box || !currentCard){ if(box) box.innerHTML=""; return; }
+  const streak = currentCard.correctStreak || 0;
+  const missing = Math.max(0, MASTER_LIMIT - streak);
+  const level = progressLevel(streak);
+  let dots = "";
+  for(let i=1;i<=MASTER_LIMIT;i++){
+    dots += `<span class="dot ${i<=streak ? "on "+level : ""}">●</span>`;
+  }
+  const hard = currentCard.difficultyBoost ? `<span class="hardBadge">difícil</span>` : "";
+  box.innerHTML = `<div class="progressDots">${dots}</div><div class="progressText">Sequência ${streak}/${MASTER_LIMIT} · ${missing ? "faltam "+missing+" acertos" : "dominada"} ${hard}</div>`;
+}
+
+function updateStats(){
+const mastered=vocabulary.filter(x=>x.mastered).length, active=activeVocabulary().length, hard=vocabulary.filter(x=>x.difficultyBoost&&!x.mastered).length;
+$("stats").textContent=`${active} ativas · ${mastered} dominadas · ${hard} difíceis · ${practiceQueue.length} por acertar nesta ronda · ${correctCount} certas · ${wrongCount} falhadas/skip`;
+renderProgress();
+}
+
+function renderWordList(){
+const q=normalize($("searchBox")?.value||""),sort=$("sortMode")?.value||"recent";let list=vocabulary.map((item,index)=>({item,index}));
+if(q) list=list.filter(x=>[x.item.pt,x.item.de,(x.item.synonyms||[]).join(" "),x.item.sentence||""].some(v=>normalize(v).includes(q)));
+if(sort==="pt") list.sort((a,b)=>a.item.pt.localeCompare(b.item.pt));else if(sort==="de") list.sort((a,b)=>a.item.de.localeCompare(b.item.de));else if(sort==="mastered") list.sort((a,b)=>(b.item.mastered?1:0)-(a.item.mastered?1:0));else list.sort((a,b)=>(b.item.createdAt||0)-(a.item.createdAt||0));
+$("dbCount").textContent=`${list.length} de ${vocabulary.length} palavras · ${activeVocabulary().length} ativas · ${vocabulary.filter(x=>x.mastered).length} dominadas`;
+if(!list.length){$("wordList").innerHTML="<p class='small'>Sem resultados.</p>";return}
+$("wordList").innerHTML="";
+list.forEach(({item,index})=>{const div=document.createElement("div");div.className="item";div.innerHTML=`<div class="item-title">${item.pt} → ${formatGerman(item.de)}</div>
+<div><span class="pill ${item.mastered?'mastered':''}">${item.mastered?'Dominada':'Ativa'}</span><span class="pill">Sequência ${item.correctStreak||0}/${MASTER_LIMIT}</span><span class="pill">Falhas ${item.wrongStreak||0}/3</span>${item.difficultyBoost&&!item.mastered?'<span class="pill" style="background:#fee2e2;color:#991b1b">Difícil</span>':''}</div>
+${item.synonyms?.length?`<div>${item.synonyms.map(s=>`<span class="pill">${s}</span>`).join("")}</div>`:""}
+${item.sentence?`<div class="small">${item.sentence}</div>`:""}
+<div class="actions"><button class="secondary" data-edit="${index}">Editar</button><button class="danger" data-del="${index}">Apagar</button></div>`;$("wordList").appendChild(div)});
+document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editWord(Number(b.dataset.edit)));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteWord(Number(b.dataset.del)));
+}
+
+function getSeparator(){return $("separator").value==="tab"?"\t":$("separator").value}
+function splitLine(line,sep){let r=[],c="",q=false;for(let i=0;i<line.length;i++){const ch=line[i],n=line[i+1];if(ch=='"'&&n=='"'){c+='"';i++}else if(ch=='"'){q=!q}else if(ch===sep&&!q){r.push(c.trim());c=""}else c+=ch}r.push(c.trim());return r}
+
+function importJsonBackup(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(ev){
+    try{
+      const data = JSON.parse(ev.target.result);
+      const words = Array.isArray(data) ? data : data.vocabulary;
+
+      if(!Array.isArray(words)){
+        throw new Error("invalid");
+      }
+
+      vocabulary = words.map(w => ({
+        pt: w.pt || "",
+        de: w.de || "",
+        synonyms: w.synonyms || [],
+        sentence: w.sentence || "",
+        correctStreak: w.correctStreak || 0,
+        wrongStreak: w.wrongStreak || 0,
+        difficultyBoost: !!w.difficultyBoost,
+        mastered: !!w.mastered
+      })).filter(w => w.pt && w.de);
+
+      saveVocabulary();
+      renderWordList();
+      startPractice();
+
+      $("importResult").innerHTML = "<strong>Backup JSON importado com sucesso.</strong>";
+    }catch(err){
+      $("importResult").innerHTML = "<strong>JSON inválido.</strong>";
+    }
+
+    e.target.value = "";
+  };
+
+  reader.readAsText(file, "UTF-8");
+}
+
+function loadImportFile(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=x=>{$("bulkText").value=x.target.result;$("importResult").innerHTML="Ficheiro carregado. Clica em Importar."};reader.readAsText(f,"UTF-8")}
+function importBulkText(){
+const text=$("bulkText").value.trim(),sep=getSeparator(),mode=$("importMode") ? $("importMode").value : "add";
+if(!text){alert("Cola texto ou carrega um ficheiro.");return}
+let imported=0,skipped=0,dups=0,updated=0;
+text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach((line,i)=>{
+  const p=splitLine(line,sep);
+  if(i===0&&p[0]&&p[0].toLowerCase().includes("portugu")){skipped++;return}
+  const pt=(p[0]||"").trim(),de=(p[1]||"").trim(),syn=parseSynonyms(p[2]||""),sentence=(p[3]||"").trim();
+  if(!pt||!de){skipped++;return}
+  const existingIndex=findBestExistingIndex(pt,de,syn);
+  if(existingIndex>=0){
+    if(mode==="update"){
+      const old=vocabulary[existingIndex];
+      vocabulary[existingIndex]={
+        ...old,
+        pt: pt || old.pt,
+        de: de || old.de,
+        synonyms: mergeSynonyms(old.synonyms, syn),
+        sentence: sentence || old.sentence || "",
+        updatedAt: Date.now()
+      };
+      updated++;
+    }else{
+      dups++;
+      skipped++;
+    }
+    return;
+  }
+  vocabulary.push({pt,de,synonyms:syn,sentence,createdAt:Date.now(),updatedAt:Date.now(),correctStreak:0,wrongStreak:0,difficultyBoost:false,mastered:false});
+  imported++;
+});
+saveVocabulary();renderWordList();startPractice();
+$("importResult").innerHTML=`<strong>${imported}</strong> novas. <strong>${updated}</strong> atualizadas. <strong>${dups}</strong> duplicados ignorados. <strong>${skipped}</strong> linhas ignoradas.`;
+$("bulkText").value="";$("fileInput").value="";
+}
+function csvEscape(v){v=(v||"").toString();return /[;"\n,]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function exportCsv(){const lines=["Português;Alemão;Sinónimos;Frase;Sequência;Falhas;Difícil;Dominada",...vocabulary.map(x=>[x.pt,x.de,(x.synonyms||[]).join(", "),x.sentence||"",x.correctStreak||0,x.wrongStreak||0,x.difficultyBoost?"sim":"não",x.mastered?"sim":"não"].map(csvEscape).join(";"))];downloadFile("vocabulario_deutsch_trainer.csv",lines.join("\n"),"text/csv")}
+function exportJson(){downloadFile("vocabulario_deutsch_trainer.json",JSON.stringify(vocabulary,null,2),"application/json")}
+function downloadTemplate(){downloadFile("modelo_vocabulario_alemao.csv","Português;Alemão;Sinónimos;Frase\ncasa;das Haus;Haus, Zuhause;Ich gehe nach Hause.\n","text/csv")}
+function downloadFile(name,content,type){const blob=new Blob([content],{type:type+";charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
+
+function backupFilename(ext){
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+  return `deutsch-trainer-backup-${stamp}.${ext}`;
+}
+function createBackupJson(){
+  const backup = {app:"Deutsch Trainer",version:"10.1",createdAt:new Date().toISOString(),vocabulary};
+  downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
+  changesSinceBackup=0;
+  localStorage.setItem("changesSinceBackup","0");
+  localStorage.setItem("lastBackupAt",new Date().toISOString());
+  updateBackupInfo();
+}
+function createBackupCsv(){
+  exportCsv();
+  changesSinceBackup=0;
+  localStorage.setItem("changesSinceBackup","0");
+  localStorage.setItem("lastBackupAt",new Date().toISOString());
+  updateBackupInfo();
+}
+function updateBackupInfo(){
+  const el=$("lastBackupInfo");
+  if(!el)return;
+  const last=localStorage.getItem("lastBackupAt");
+  const changes=Number(localStorage.getItem("changesSinceBackup")||changesSinceBackup||0);
+  el.innerHTML=`Alterações desde o último backup: <strong>${changes}</strong>${last?`<br>Último backup: ${new Date(last).toLocaleString()}`:"<br>Ainda sem backup registado neste dispositivo."}`;
+}
+function maybeShowBackupReminder(){
+  if(!$("backupReminder") || !$("backupReminder").checked)return;
+  const changes=Number(localStorage.getItem("changesSinceBackup")||0);
+  if(changes>=25) alert("Tens muitas alterações desde o último backup. Considera criar um backup JSON e guardar no iCloud Drive.");
+}
+
+function setupSwipe(){const card=$("card");card.addEventListener("click",revealCard);card.addEventListener("touchstart",e=>{if(!currentCard)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;touchCurrentX=touchStartX;isDragging=true},{passive:true});card.addEventListener("touchmove",e=>{if(!isDragging||!currentCard)return;touchCurrentX=e.touches[0].clientX;const dx=touchCurrentX-touchStartX,dy=e.touches[0].clientY-touchStartY;if(Math.abs(dy)>Math.abs(dx))return;if(dx<-30){card.classList.add("swipe-left");card.classList.remove("swipe-right")}else if(dx>30){card.classList.add("swipe-right");card.classList.remove("swipe-left")}else card.classList.remove("swipe-left","swipe-right")},{passive:true});card.addEventListener("touchend",()=>{if(!isDragging||!currentCard)return;const dx=touchCurrentX-touchStartX;isDragging=false;card.classList.remove("swipe-left","swipe-right");if(dx<=-swipeThreshold)markKnownBySwipe();else if(dx>=swipeThreshold)markWrong()});document.addEventListener("keydown",e=>{if(!currentCard)return;if(e.key==="ArrowLeft")markKnownBySwipe();if(e.key==="ArrowRight")markWrong()})}
+
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>switchPage(t.dataset.page));
+$("saveBtn").onclick=saveWord;$("cancelEditBtn").onclick=clearForm;$("wrongBtn").onclick=markWrong;$("skipBtn").onclick=skipCard;$("restartBtn").onclick=startPractice;$("clearBtn").onclick=clearAllWords;$("micBtn").onclick=startVoiceRecognition;$("stopMicBtn").onclick=stopVoiceRecognition;
+$("fileInput").onchange=loadImportFile;$("jsonInput").onchange=importJsonBackup;$("importBtn").onclick=importBulkText;$("templateBtn").onclick=downloadTemplate;$("exportCsvBtn").onclick=exportCsv;$("exportJsonBtn").onclick=exportJson;$("backupJsonBtn").onclick=createBackupJson;$("backupCsvBtn").onclick=createBackupCsv;
+["ptWord","deWord","synonyms"].forEach(id=>$(id).addEventListener("input",renderDuplicateWarning));
+$("searchBox").oninput=renderWordList;$("sortMode").onchange=renderWordList;
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
+loadVocabulary();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
+</script>
+</body>
+</html>
