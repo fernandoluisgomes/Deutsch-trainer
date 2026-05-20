@@ -1,4 +1,4 @@
-const CACHE_NAME = "deutsch-trainer-v10-2-3b-cache-v1";
+const CACHE_NAME = "deutsch-trainer-v10-2-10g-cache-v1";
 const FILES_TO_CACHE = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", event => {

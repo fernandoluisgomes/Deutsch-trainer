@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.2.3b</title>
+<title>Deutsch Trainer V10.2.10g</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
 :root{--blue:#1f6feb;--green:#16a34a;--red:#dc2626;--yellow:#f59e0b;--bg:#f4f4f4;--card:#fff;--text:#222;--muted:#666}
 *{box-sizing:border-box}body{font-family:Arial,sans-serif;background:var(--bg);margin:0;color:var(--text)}.container{max-width:920px;margin:auto;padding:14px}
 header{position:sticky;top:0;background:rgba(244,244,244,.96);backdrop-filter:blur(8px);z-index:10;padding:10px 0;border-bottom:1px solid #ddd}
-h1{font-size:28px;text-align:center;margin:8px 0 12px}.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+h1{font-size:28px;text-align:center;margin:8px 0 12px}.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .tab{background:#e5e7eb;color:#111;border:0;border-radius:12px;padding:12px;font-weight:bold}.tab.active{background:var(--blue);color:#fff}
 .box{background:var(--card);padding:18px;margin:16px 0;border-radius:16px;box-shadow:0 2px 8px #0001}h2{text-align:center;margin-top:0}
 label{display:block;margin-top:12px;font-weight:bold}input,textarea,select{width:100%;padding:12px;margin-top:6px;border-radius:10px;border:1px solid #ccc;font-size:16px}
@@ -23,7 +23,13 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 .progressBox{text-align:center;margin:10px 0 14px}
 .progressDots{font-size:22px;letter-spacing:3px;margin:4px 0}
 .dot{color:#d1d5db}.dot.on.low{color:#dc2626}.dot.on.mid{color:#f59e0b}.dot.on.high{color:#1f6feb}.dot.on.done{color:#16a34a}
-.progressText{font-size:14px;color:#555}.hardBadge{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px;font-size:13px;margin-left:4px}.voiceOk{color:#166534;font-weight:bold}.voiceBad{color:#991b1b;font-weight:bold}.voiceListening{color:#1f6feb;font-weight:bold}.micRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.micOn{background:#16a34a!important;color:white}
+.progressText{font-size:14px;color:#555}.hardBadge{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px;font-size:13px;margin-left:4px}.voiceOk{color:#166534;font-weight:bold}.voiceBad{color:#991b1b;font-weight:bold}.voiceListening{color:#1f6feb;font-weight:bold}.micOn{background:#16a34a!important;color:white}
+.micControlRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.micStatusDot{display:inline-block;width:18px;height:18px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 1px #ccc}
+.micStatusDot.off{background:#dc2626}
+.micStatusDot.preparing{background:#f59e0b}
+.micStatusDot.listening{background:#16a34a}
+.micStatusText{font-size:14px;color:#555}
 .article{font-weight:700;border-radius:8px;padding:2px 6px;margin-right:4px}.article-der{background:#dbeafe;color:#1e40af}.article-die{background:#fee2e2;color:#991b1b}.article-das{background:#dcfce7;color:#166534}.item{padding:12px;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.item-title{font-weight:bold;font-size:18px}.pill{display:inline-block;background:#eef2ff;border-radius:999px;padding:4px 8px;margin:3px;font-size:13px;color:#333}.mastered{background:#dcfce7;color:#166534}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{margin-top:8px}.dup-list{font-size:14px;margin-top:8px}.dup-list li{margin:5px 0}
 @media(max-width:700px){.container{padding:10px}h1{font-size:25px}.card{font-size:30px;min-height:200px}button{width:100%;margin-top:8px}.grid2{grid-template-columns:1fr}.tabs{gap:5px}.tab{font-size:14px;padding:10px 6px}}
 </style>
@@ -31,9 +37,10 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.2.3b</h1>
+<h1>Deutsch Trainer V10.2.10g</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
+<button class="tab" data-page="statsPage">Estatísticas</button>
 <button class="tab" data-page="add">Adicionar</button>
 <button class="tab" data-page="db">Base de dados</button>
 <button class="tab" data-page="config">Configuração</button>
@@ -47,9 +54,10 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <div id="card" class="card">Adiciona palavras para começar</div>
 <div id="progressBox" class="progressBox"></div>
 <div id="voiceResult" class="small" style="text-align:center;margin:8px 0"></div>
-<div class="micRow">
+<div class="micControlRow">
 <button class="primary" id="micBtn">🎤 Ligar microfone</button>
-<button class="secondary" id="stopMicBtn">Desligar microfone</button>
+<span id="micStatusDot" class="micStatusDot off"></span>
+<span id="micStatusText" class="micStatusText">desligado</span>
 </div>
 <div id="answerArea" class="hidden">
 <div id="synonymButtons"></div>
@@ -63,10 +71,18 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 Esquerda = acertei/já sei · direita = falhei · toque = revelar/esconder resposta
 </p>
 <p class="small" style="text-align:center;margin:0">
-Usa o microfone para responder em alemão ou revela a carta para escolher manualmente.
+Usa o microfone para cada resposta, ou ativa o modo automático nas configurações.
 </p>
 </div>
 
+</div>
+</section>
+
+
+<section id="page-statsPage" class="hidden">
+<div class="box">
+<h2>Estatísticas</h2>
+<div id="statsPageContent"></div>
 </div>
 </section>
 
@@ -139,6 +155,24 @@ Usa o microfone para responder em alemão ou revela a carta para escolher manual
 <hr style="border:0;border-top:1px solid #eee;margin:18px 0">
 
 <label><input type="checkbox" id="voiceEnabled" checked> Ativar reconhecimento de voz</label>
+<label><input type="checkbox" id="autoMicEnabled"> Modo automático do microfone</label>
+<label><input type="checkbox" id="waitForPortugueseBeforeMic" checked> Esperar a voz portuguesa terminar antes de ouvir</label>
+<label>Tempo extra após a voz portuguesa</label>
+<select id="autoMicDelay">
+<option value="0">0 segundos</option>
+<option value="2000">2 segundos</option>
+<option value="3000" selected>3 segundos</option>
+<option value="5000">5 segundos</option>
+<option value="7000">7 segundos</option>
+</select>
+<label>Parar modo automático após silêncio contínuo</label>
+<select id="autoMicMaxSilentMinutes">
+<option value="1">1 minuto</option>
+<option value="2">2 minutos</option>
+<option value="5" selected>5 minutos</option>
+<option value="10">10 minutos</option>
+</select>
+<p class="small">Se a espera estiver ativa, o microfone só liga depois da voz portuguesa terminar + tempo extra. Se estiver desligada, tenta ouvir sem esperar pela voz da app — ideal com fones.</p>
 <label><input type="checkbox" id="requireArticle"> Exigir artigo no reconhecimento</label>
 <p class="small">
 Se “exigir artigo” estiver desligado, a app aceita tanto <strong>Haus</strong> como <strong>das Haus</strong>.
@@ -175,7 +209,7 @@ Mas podes exportar um backup JSON e guardá-lo manualmente em iCloud Drive, OneD
 const STORAGE_KEY="vocabularyGermanTrainer_v5"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
 let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;
-let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
+let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let micMasterOn=false;let autoMicTimer=null;let autoMicRetryTimer=null;let appIsSpeaking=false;let appSpeechCooldownUntil=0;let autoMicSilentStartedAt=0;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
 
 function $(id){return document.getElementById(id)}
 function normalize(t){return (t||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
@@ -213,14 +247,46 @@ function formatGerman(text){
   return `<span class="article article-${article}">${article}</span>${escapeHtml(rest)}`;
 }
 
+
+function markAppSpeechStart(){
+  appIsSpeaking = true;
+  appSpeechCooldownUntil = Date.now() + 1500;
+}
+
+function markAppSpeechEnd(){
+  appIsSpeaking = false;
+  appSpeechCooldownUntil = Date.now() + 1500;
+}
+
+function appAudioActive(){
+  return appIsSpeaking ||
+         Date.now() < appSpeechCooldownUntil ||
+         (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending));
+}
+
+function pauseRecognitionForAppSpeech(){
+  if(recognition && isListening){
+    try { recognition.stop(); } catch(e) {}
+  }
+  isListening = false;
+  if(micMasterOn && isAutoMicMode()){
+    setMicStatus("preparing", "preparação");
+  }
+}
+
 function speakGerman(text){
   if(!$("speechEnabled") || !$("speechEnabled").checked) return;
   if(!("speechSynthesis" in window)) return;
+  pauseRecognitionForAppSpeech();
   const utterance = new SpeechSynthesisUtterance(cleanGermanForSpeech(text));
   utterance.lang = "de-DE";
   utterance.rate = 0.85;
   utterance.pitch = 1;
+  utterance.onstart = markAppSpeechStart;
+  utterance.onend = markAppSpeechEnd;
+  utterance.onerror = markAppSpeechEnd;
   window.speechSynthesis.cancel();
+  markAppSpeechStart();
   window.speechSynthesis.speak(utterance);
 }
 
@@ -229,16 +295,22 @@ function speakPortuguese(text){
   if(!$("autoSpeech") || !$("autoSpeech").checked) return;
   if(!("speechSynthesis" in window)) return;
 
+  pauseRecognitionForAppSpeech();
+
   const utterance = new SpeechSynthesisUtterance(text || "");
   utterance.lang = "pt-PT";
   utterance.rate = 0.82;
   utterance.pitch = 1;
+  utterance.onstart = markAppSpeechStart;
+  utterance.onend = markAppSpeechEnd;
+  utterance.onerror = markAppSpeechEnd;
 
   // Pausa maior para não cortar a resposta alemã anterior.
   // Não usamos cancel() aqui, porque isso interrompia a voz alemã.
+  markAppSpeechStart();
   setTimeout(() => {
     if(window.speechSynthesis.speaking){
-      setTimeout(() => window.speechSynthesis.speak(utterance), 900);
+      setTimeout(() => window.speechSynthesis.speak(utterance), 1200);
     } else {
       window.speechSynthesis.speak(utterance);
     }
@@ -323,6 +395,183 @@ function showVoiceDebug(correct, heard, accepted, alternatives){
   `;
 }
 
+
+function exactVoiceMatch(spokenText, expectedText){
+  return normalizeVoice(spokenText) === normalizeVoice(expectedText);
+}
+
+function wordWithoutArticleMatch(spokenText, expectedText){
+  return normalizeVoice(stripGermanArticle(spokenText)) === normalizeVoice(stripGermanArticle(expectedText));
+}
+
+function bestExpectedAnswer(spokenText){
+  if(!currentCard) return "";
+  const accepted = getAllAnswers(currentCard);
+  const exact = accepted.find(a => exactVoiceMatch(spokenText, a));
+  if(exact) return exact;
+
+  const noArticle = accepted.find(a => wordWithoutArticleMatch(spokenText, a));
+  if(noArticle) return noArticle;
+
+  return accepted[0] || "";
+}
+
+function shouldRepeatHeard(spokenText){
+  if(!currentCard) return false;
+  const accepted = getAllAnswers(currentCard);
+  return accepted.some(a => exactVoiceMatch(spokenText, a));
+}
+
+function speakFeedbackForVoice(correct, heard){
+  const expected = bestExpectedAnswer(heard);
+  if(correct && shouldRepeatHeard(heard)){
+    speakGerman(heard);
+  }else{
+    speakGerman(expected);
+  }
+  return expected;
+}
+
+
+function setMicStatus(state, text){
+  const dot = $("micStatusDot");
+  const label = $("micStatusText");
+  if(dot) dot.className = "micStatusDot " + state;
+  if(label) label.textContent = text;
+}
+
+function setMicButton(on){
+  if(on){
+    $("micBtn").classList.add("micOn");
+    $("micBtn").textContent = "🎤 Desligar microfone";
+  }else{
+    $("micBtn").classList.remove("micOn");
+    $("micBtn").textContent = "🎤 Ligar microfone";
+  }
+}
+
+function isAutoMicMode(){
+  return $("autoMicEnabled") && $("autoMicEnabled").checked;
+}
+
+function shouldWaitForPortugueseBeforeMic(){
+  return $("waitForPortugueseBeforeMic") && $("waitForPortugueseBeforeMic").checked;
+}
+
+function getAutoMicMaxSilentMs(){
+  const minutes = $("autoMicMaxSilentMinutes") ? Number($("autoMicMaxSilentMinutes").value) : 5;
+  return minutes * 60 * 1000;
+}
+
+function resetAutoMicSilentTimer(){
+  autoMicSilentStartedAt = Date.now();
+}
+
+function autoMicSilenceLimitReached(){
+  if(!autoMicSilentStartedAt) resetAutoMicSilentTimer();
+  return Date.now() - autoMicSilentStartedAt > getAutoMicMaxSilentMs();
+}
+
+function clearAutoMicTimers(){
+  clearTimeout(autoMicTimer);
+  clearTimeout(autoMicRetryTimer);
+}
+
+function stopAllMicActivity(){
+  micMasterOn = false;
+  autoMicSilentStartedAt = 0;
+  clearAutoMicTimers();
+  if(recognition && isListening){
+    try{ recognition.stop(); }catch(e){}
+  }
+  isListening = false;
+  setMicButton(false);
+  setMicStatus("off", "desligado");
+}
+
+function tryStartListening(autoStarted=false){
+  if(!micMasterOn && autoStarted) return;
+  if(isListening) return;
+
+  if(!$("voiceEnabled") || !$("voiceEnabled").checked){
+    $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz desativado na configuração.</span>";
+    stopAllMicActivity();
+    return;
+  }
+
+  if(!currentCard) return;
+  if(!recognition) recognition = setupRecognition();
+  if(!recognition) return;
+
+  if(shouldWaitForPortugueseBeforeMic() && appAudioActive()){
+    setMicStatus("preparing", "preparação");
+    autoMicRetryTimer = setTimeout(()=>scheduleAutoMic(), 50);
+    return;
+  }
+
+  setMicStatus("preparing", "preparação");
+
+  try{
+    recognition.start();
+  }catch(e){
+    if(autoStarted && micMasterOn && isAutoMicMode()){
+      autoMicRetryTimer = setTimeout(()=>tryStartListening(true), 1500);
+    }else{
+      $("voiceResult").innerHTML = "<span class='voiceBad'>Não consegui iniciar o microfone.</span>";
+      if(!isAutoMicMode()) stopAllMicActivity();
+    }
+  }
+}
+
+function scheduleAutoMic(){
+  clearAutoMicTimers();
+
+  if(!micMasterOn) return;
+  if(!isAutoMicMode()) return;
+  if(!currentCard) return;
+
+  const delay = $("autoMicDelay") ? Number($("autoMicDelay").value) : 3000;
+
+  // Delay configurado: apenas antes da primeira tentativa de ouvir após a carta/voz PT.
+  setMicStatus("preparing", "preparação");
+
+  autoMicTimer = setTimeout(() => {
+    if(appAudioActive()){
+      // Se a app ainda está a falar, espera em pequenos ciclos, sem reaplicar o delay completo.
+      autoMicRetryTimer = setTimeout(() => scheduleAutoMic(), 300);
+      return;
+    }
+
+    tryStartListening(true);
+  }, delay);
+}
+
+function retryAutoMicAfterSilence(){
+  clearAutoMicTimers();
+
+  if(!micMasterOn) return;
+  if(!isAutoMicMode()) return;
+  if(!currentCard) return;
+
+  if(autoMicSilenceLimitReached()){
+    stopAllMicActivity();
+    $("voiceResult").innerHTML = "<span class='small'>Microfone automático desligado após período de silêncio.</span>";
+    return;
+  }
+
+  setMicStatus("preparing", "preparação");
+
+  // Retry rápido após silêncio: não usa a configuração "espera antes de ouvir".
+  autoMicRetryTimer = setTimeout(() => {
+    if(shouldWaitForPortugueseBeforeMic() && appAudioActive()){
+      retryAutoMicAfterSilence();
+      return;
+    }
+
+    tryStartListening(true);
+  }, 600);
+}
+
 function setupRecognition(){
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SpeechRecognition){
@@ -337,25 +586,42 @@ function setupRecognition(){
 
   rec.onstart = () => {
     isListening = true;
-    $("micBtn").classList.add("micOn");
-    $("micBtn").textContent = "🎤 A ouvir...";
+    setMicButton(true);
+    setMicStatus("listening", "a ouvir…");
     $("voiceResult").innerHTML = "<span class='voiceListening'>A ouvir... diz a resposta em alemão</span>";
   };
 
   rec.onend = () => {
     isListening = false;
-    $("micBtn").classList.remove("micOn");
-    $("micBtn").textContent = "🎤 Ligar microfone";
+
+    if(isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+    }else{
+      stopAllMicActivity();
+    }
   };
 
   rec.onerror = (event) => {
     isListening = false;
-    $("micBtn").classList.remove("micOn");
-    $("micBtn").textContent = "🎤 Ligar microfone";
-    $("voiceResult").innerHTML = `<span class='voiceBad'>Erro no microfone: ${event.error}</span>`;
+
+    if(event.error === "no-speech" && isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+      return;
+    }
+
+    if(event.error !== "no-speech"){
+      $("voiceResult").innerHTML = `<span class='voiceBad'>Erro no microfone: ${event.error}</span>`;
+    }
+
+    if(isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+    }else{
+      stopAllMicActivity();
+    }
   };
 
   rec.onresult = (event) => {
+    resetAutoMicSilentTimer();
     const alternatives = Array.from(event.results[0]).map(r => r.transcript);
     const best = alternatives[0] || "";
     const accepted = getAllAnswers(currentCard);
@@ -368,55 +634,67 @@ function setupRecognition(){
       $("voiceResult").innerHTML = "";
     }
 
+    const spokenExpected = speakFeedbackForVoice(correct, best);
+
     if(correct){
-      speakGerman(best || expected);
       registerCorrect();
       correctCount++;
       removeCurrentFromQueue();
-      showVoiceCardFeedback(true, best, expected);
+      showVoiceCardFeedback(true, best, spokenExpected || expected);
       updateStats();
     }else{
-      speakGerman(expected);
       registerWrong();
       wrongCount++;
-      showVoiceCardFeedback(false, best, expected);
+      showVoiceCardFeedback(false, best, spokenExpected || expected);
       updateStats();
     }
 
-    setTimeout(nextCard, 5000);
+    setTimeout(() => {
+      nextCard();
+
+      if(micMasterOn && isAutoMicMode()){
+        // O scheduleAutoMic já respeita appAudioActive, mas deixamos uma margem extra.
+        scheduleAutoMic();
+      }else if(micMasterOn && !isAutoMicMode()){
+        stopAllMicActivity();
+      }
+    }, 5000);
   };
 
   return rec;
 }
 
-function startVoiceRecognition(){
-  if(isListening){ stopVoiceRecognition(); return; }
-  if(!$("voiceEnabled") || !$("voiceEnabled").checked) {
-    $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz desativado na configuração.</span>";
-    return;
+function startVoiceRecognition(autoStarted=false){
+  // Quando vem de um clique, o browser passa MouseEvent. Isto deve contar como manual.
+  if(autoStarted && typeof autoStarted === "object") autoStarted = false;
+
+  if(!autoStarted){
+    if(micMasterOn){
+      stopAllMicActivity();
+      $("voiceResult").innerHTML = "<span class='small'>Microfone desligado.</span>";
+      return;
+    }
+
+    micMasterOn = true;
+    resetAutoMicSilentTimer();
+    setMicButton(true);
+    setMicStatus("preparing", "preparação");
   }
-  if(!currentCard) return;
-  if(!recognition) recognition = setupRecognition();
-  if(!recognition) return;
-  try{
-    recognition.start();
-  }catch(e){
-    $("voiceResult").innerHTML = "<span class='voiceBad'>Não consegui iniciar o microfone.</span>";
-  }
+
+  tryStartListening(autoStarted);
 }
 
 function stopVoiceRecognition(){
-  if(recognition && isListening) recognition.stop();
-  isListening=false;
-  $("micBtn").classList.remove("micOn");
-  $("micBtn").textContent = "🎤 Ligar microfone";
+  stopAllMicActivity();
   $("voiceResult").innerHTML = "";
 }
 
 function switchPage(page){
-["train","add","db","config"].forEach(p=>$("page-"+p).classList.toggle("hidden",p!==page));
+if(page !== "train") stopAllMicActivity();
+["train","statsPage","add","db","config"].forEach(p=>$("page-"+p).classList.toggle("hidden",p!==page));
 document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.page===page));
 if(page==="db") renderWordList();
+if(page==="statsPage") renderStatsPage();
 if(page==="train") startPractice();
 }
 
@@ -483,7 +761,10 @@ function nextCard(){revealed=false;$("answerArea").classList.add("hidden");if($(
 card.innerHTML=currentCard.pt;
 updateStats();
 renderProgress();
-speakPortuguese(currentCard.pt)
+speakPortuguese(currentCard.pt);
+if(micMasterOn && isAutoMicMode()){
+  scheduleAutoMic();
+}
 }
 function revealCard(){
 if(!currentCard)return;
@@ -693,10 +974,55 @@ function maybeShowBackupReminder(){
   if(changes>=25) alert("Tens muitas alterações desde o último backup. Considera criar um backup JSON e guardar no iCloud Drive.");
 }
 
+
+function renderStatsPage(){
+  const total = vocabulary.length;
+  const active = activeVocabulary().length;
+  const mastered = vocabulary.filter(x=>x.mastered).length;
+  const difficult = vocabulary.filter(x=>x.difficultyBoost && !x.mastered).length;
+
+  const der = vocabulary.filter(x=>/^der\s+/i.test(x.de || "")).length;
+  const die = vocabulary.filter(x=>/^die\s+/i.test(x.de || "")).length;
+  const das = vocabulary.filter(x=>/^das\s+/i.test(x.de || "")).length;
+  const noArticle = vocabulary.filter(x=>! /^(der|die|das)\s+/i.test(x.de || "")).length;
+
+  const hardest = vocabulary
+    .filter(x=>(x.wrongStreak||0)>0 || x.difficultyBoost)
+    .sort((a,b)=>(b.wrongStreak||0)-(a.wrongStreak||0))
+    .slice(0,10);
+
+  $("statsPageContent").innerHTML = `
+    <div class="grid2">
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Total:</strong><br>${total}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Ativas:</strong><br>${active}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas:</strong><br>${mastered}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Difíceis:</strong><br>${difficult}</div>
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Artigos</h3>
+      <span class="pill">der: ${der}</span>
+      <span class="pill">die: ${die}</span>
+      <span class="pill">das: ${das}</span>
+      <span class="pill">sem artigo: ${noArticle}</span>
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Top palavras difíceis</h3>
+      ${
+        hardest.length
+          ? hardest.map(w=>`<div class="item"><strong>${w.pt}</strong> → ${formatGerman(w.de)}<br><span class="small">Falhas: ${w.wrongStreak||0} · Sequência: ${w.correctStreak||0}/${MASTER_LIMIT}</span></div>`).join("")
+          : "<p class='small'>Ainda não há palavras difíceis.</p>"
+      }
+    </div>
+  `;
+}
+
+
 function setupSwipe(){const card=$("card");card.addEventListener("click",revealCard);card.addEventListener("touchstart",e=>{if(!currentCard)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;touchCurrentX=touchStartX;isDragging=true},{passive:true});card.addEventListener("touchmove",e=>{if(!isDragging||!currentCard)return;touchCurrentX=e.touches[0].clientX;const dx=touchCurrentX-touchStartX,dy=e.touches[0].clientY-touchStartY;if(Math.abs(dy)>Math.abs(dx))return;if(dx<-30){card.classList.add("swipe-left");card.classList.remove("swipe-right")}else if(dx>30){card.classList.add("swipe-right");card.classList.remove("swipe-left")}else card.classList.remove("swipe-left","swipe-right")},{passive:true});card.addEventListener("touchend",()=>{if(!isDragging||!currentCard)return;const dx=touchCurrentX-touchStartX;isDragging=false;card.classList.remove("swipe-left","swipe-right");if(dx<=-swipeThreshold)markKnownBySwipe();else if(dx>=swipeThreshold)markWrong()});document.addEventListener("keydown",e=>{if(!currentCard)return;if(e.key==="ArrowLeft")markKnownBySwipe();if(e.key==="ArrowRight")markWrong()})}
 
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>switchPage(t.dataset.page));
-$("saveBtn").onclick=saveWord;$("cancelEditBtn").onclick=clearForm;$("wrongBtn").onclick=markWrong;$("skipBtn").onclick=skipCard;$("restartBtn").onclick=startPractice;$("clearBtn").onclick=clearAllWords;$("micBtn").onclick=startVoiceRecognition;$("stopMicBtn").onclick=stopVoiceRecognition;
+$("saveBtn").onclick=saveWord;$("cancelEditBtn").onclick=clearForm;$("wrongBtn").onclick=markWrong;$("skipBtn").onclick=skipCard;$("restartBtn").onclick=startPractice;$("clearBtn").onclick=clearAllWords;$("micBtn").onclick=startVoiceRecognition;
 $("fileInput").onchange=loadImportFile;$("jsonInput").onchange=importJsonBackup;$("importBtn").onclick=importBulkText;$("templateBtn").onclick=downloadTemplate;$("exportCsvBtn").onclick=exportCsv;$("exportJsonBtn").onclick=exportJson;$("backupJsonBtn").onclick=createBackupJson;$("backupCsvBtn").onclick=createBackupCsv;
 ["ptWord","deWord","synonyms"].forEach(id=>$(id).addEventListener("input",renderDuplicateWarning));
 $("searchBox").oninput=renderWordList;$("sortMode").onchange=renderWordList;
