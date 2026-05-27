@@ -33,7 +33,7 @@ function parseSynonyms(t){return t?t.split(",").map(s=>s.trim()).filter(Boolean)
 function getAllAnswers(c){const a=[c.de,...(c.synonyms||[])],u=[];for(const x of a)if(x&&!u.some(y=>normalize(y)===normalize(x)))u.push(x);return u}
 function allGermanTerms(c){return getAllAnswers(c).map(normalize)}
 function activeVocabulary(){
-return vocabulary.filter(x => (x.learningState||"auto") !== "suspended" && (x.learningState||"auto") !== "mastered");
+return vocabulary.filter(x => (x.learningState||"auto") !== "suspended" && (x.learningState||"auto") !== "mastered" && !x.mastered);
 }
 
 function cleanGermanForSpeech(text){
@@ -683,43 +683,110 @@ function resetLearningForCurrentEdit(){
  if(editVal===""){showNotice("saveNotice","Guarda primeiro a palavra antes de resetar aprendizagem.","warn");return}
  const idx=Number(editVal), w=vocabulary[idx];
  if(!w)return;
- w.memoryLevel=0;w.stabilityScore=0;w.xp=0;w.studyState="new";w.mastered=false;w.difficultyBoost=false;
+ w.memoryLevel=0;w.stabilityScore=0;w.xp=0;w.studyState="new";w.learningState="auto";w.mastered=false;w.difficultyBoost=false;
  w.correctStreak=0;w.wrongStreak=0;w.sessionDueAt=0;w.nextReviewAt=0;w.reviewIntervalDays=0;
  saveVocabulary();showNotice("saveNotice","Aprendizagem resetada para esta palavra.","ok");renderWordList();startPractice();
 }
 
 function saveWord(){
-const pt=$("ptWord").value.trim(),de=$("deWord").value.trim(),syn=parseSynonyms($("synonyms").value),sent=$("sentence").value.trim();
-if(!pt||!de){showNotice("saveNotice","Preenche pelo menos português e alemão.","error");return}
-const editVal=$("editIndex").value, mastered=$("masteredCheck").checked;
-let previous = editVal==="" ? {} : vocabulary[Number(editVal)];
+const pt=$("ptWord").value.trim();
+const de=$("deWord").value.trim();
+const syn=parseSynonyms($("synonyms").value);
+const sent=$("sentence").value.trim();
+const editVal=$("editIndex").value;
+const learningState=$("learningState") ? $("learningState").value : "auto";
+const mastered=learningState==="mastered";
+
+if(!pt||!de){
+  showNotice("saveNotice","Preenche pelo menos português e alemão.","error");
+  return;
+}
+
+let previous = editVal==="" ? {} : (vocabulary[Number(editVal)] || {});
+
 const item={
-pt,de,synonyms:syn,sentence:sent,
-createdAt:previous.createdAt||Date.now(),
-updatedAt:Date.now(),
-sessionDueAt:0,
-correctStreak: mastered ? Math.max(previous.correctStreak||0, minStreakToMaster ? minStreakToMaster() : 3) : (previous.correctStreak||0),
-wrongStreak: mastered ? 0 : (previous.wrongStreak||0),
-difficultyBoost: mastered ? false : (previous.difficultyBoost||false),
-mastered,
-learningState:$("learningState") ? $("learningState").value : "auto",
-memoryLevel: mastered ? 100 : (previous.memoryLevel||0),
-studyState: mastered ? "mastered" : (previous.studyState||"new"),
-successCount: previous.successCount||0,
-failCount: previous.failCount||0,
-seenCount: previous.seenCount||0,
-errorStats: previous.errorStats || {memory:0,article:0,grammar:0}
+  ...previous,
+  pt,de,synonyms:syn,sentence:sent,
+  createdAt:previous.createdAt||Date.now(),
+  updatedAt:Date.now(),
+  learningState,
+  mastered,
+  correctStreak: mastered ? Math.max(previous.correctStreak||0, 3) : (previous.correctStreak||0),
+  wrongStreak: mastered ? 0 : (previous.wrongStreak||0),
+  difficultyBoost: mastered ? false : (previous.difficultyBoost||false),
+  memoryLevel: mastered ? Math.max(previous.memoryLevel||0,85) : (previous.memoryLevel??0),
+  stabilityScore: mastered ? Math.max(previous.stabilityScore||0,75) : (previous.stabilityScore??0),
+  xp: previous.xp||0,
+  studyState: mastered ? "mastered" : (previous.studyState||"new"),
+  successCount: previous.successCount||0,
+  failCount: previous.failCount||0,
+  seenCount: previous.seenCount||0,
+  errorStats: previous.errorStats || {memory:0,article:0,grammar:0},
+  sessionDueAt:0,
+  lastSessionSeen:0,
+  nextReviewAt:previous.nextReviewAt||0,
+  reviewIntervalDays:previous.reviewIntervalDays||0,
+  lastReviewedAt:previous.lastReviewedAt||0
 };
-if(editVal===""){vocabulary.push(item);showNotice("saveNotice","Palavra adicionada.","ok")}
-else{vocabulary[Number(editVal)]=item;showNotice("saveNotice","Palavra atualizada.","ok")}
-saveVocabulary();clearForm();renderWordList();startPractice();
+
+if(learningState==="suspended"){
+  item.mastered=false;
+  item.studyState="suspended";
 }
+if(learningState==="focus"){
+  item.mastered=false;
+  if(item.studyState==="mastered" || item.studyState==="suspended"){
+    item.studyState="learning";
+  }
+}
+if(learningState==="auto" && previous.learningState && previous.learningState!=="auto"){
+  item.mastered=false;
+  if(item.studyState==="mastered" || item.studyState==="suspended"){
+    item.studyState="learning";
+  }
+}
+
+if(editVal===""){
+  vocabulary.push(item);
+  showNotice("saveNotice","Palavra adicionada.","ok");
+}else{
+  vocabulary[Number(editVal)]=item;
+  showNotice("saveNotice","Palavra atualizada.","ok");
+}
+
+saveVocabulary();
+clearForm();
+renderWordList();
+startPractice();
+}
+
 function clearForm(){
-$("editIndex").value="";$("formTitle").textContent="Adicionar vocabulário";$("ptWord").value="";$("deWord").value="";$("synonyms").value="";$("sentence").value="";$("masteredCheck").checked=false;$("duplicateNotice").className="";$("duplicateNotice").innerHTML="";
+$("editIndex").value="";
+$("formTitle").textContent="Adicionar vocabulário";
+$("ptWord").value="";
+$("deWord").value="";
+$("synonyms").value="";
+$("sentence").value="";
+if($("learningState")) $("learningState").value="auto";
+$("duplicateNotice").className="";
+$("duplicateNotice").innerHTML="";
 }
+
 function editWord(i){
-const item=vocabulary[i];$("editIndex").value=i;$("formTitle").textContent="Editar vocabulário";$("ptWord").value=item.pt;$("deWord").value=item.de;$("synonyms").value=(item.synonyms||[]).join(", ");$("sentence").value=item.sentence||"";$("masteredCheck").checked=!!item.mastered;switchPage("add");renderDuplicateWarning();window.scrollTo({top:0,behavior:"smooth"});
+const item=vocabulary[i];
+if(!item)return;
+$("editIndex").value=i;
+$("formTitle").textContent="Editar vocabulário";
+$("ptWord").value=item.pt||"";
+$("deWord").value=item.de||"";
+$("synonyms").value=(item.synonyms||[]).join(", ");
+$("sentence").value=item.sentence||"";
+if($("learningState")) $("learningState").value=item.learningState || (item.mastered ? "mastered" : "auto");
+switchPage("add");
+renderDuplicateWarning();
+setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);
 }
+
 function deleteWord(i){if(!confirm("Apagar esta palavra?"))return;vocabulary.splice(i,1);saveVocabulary();renderWordList();startPractice()}
 function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;correctCount=0;wrongCount=0;saveVocabulary();renderWordList();startPractice()}
 
