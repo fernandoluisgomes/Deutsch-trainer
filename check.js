@@ -1,7 +1,7 @@
 
 const STORAGE_KEY="vocabularyGermanTrainer_v5"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
-let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;let sessionStartedAt=Date.now(),sessionInitialSnapshot={};window.sessionCardCounter=0;let sessionMasteredRemembered=0,sessionMasteredForgotten=0,sessionRecoveredConfirmations=0,sessionFailedConfirmations=0;
+let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;let sessionWords=new Set(),sessionPlannedWords=new Set(),sessionDoneWords=new Set(),sessionReviewCount=0,sessionPlannedReviews=0,sessionRoundStreak={},sessionLastCorrect={};let sessionStartedAt=Date.now(),sessionInitialSnapshot={};window.sessionCardCounter=0;let sessionMasteredRemembered=0,sessionMasteredForgotten=0,sessionRecoveredConfirmations=0,sessionFailedConfirmations=0;
 let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let micMasterOn=false;let autoMicTimer=null;let autoMicRetryTimer=null;let appIsSpeaking=false;let appSpeechCooldownUntil=0;let autoMicSilentStartedAt=0;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
 
 function $(id){return document.getElementById(id)}
@@ -472,6 +472,54 @@ function tryStartListening(autoStarted=false){
   }
 }
 
+
+function portugueseSpeechIsEnabled(){
+ const ids=["speakPortuguese","speechPt","ptSpeechEnabled","speakPt","autoSpeakPortuguese","readPortuguese"];
+ for(const id of ids){
+   const el=$(id);
+   if(el) return !!el.checked;
+ }
+
+ // Fallback by label text: look for checkbox near "Ler palavra portuguesa"
+ const inputs=[...document.querySelectorAll('input[type="checkbox"]')];
+ for(const input of inputs){
+   const label=input.closest("label")?.innerText || "";
+   if(label.toLowerCase().includes("portuguesa") || label.toLowerCase().includes("português")){
+     return !!input.checked;
+   }
+ }
+
+ return true;
+}
+
+function scheduleAutoMicFastIfNoPortuguese(){
+ if(!micMasterOn || !isAutoMicMode()) return;
+ if(portugueseSpeechIsEnabled()) return;
+
+ setTimeout(()=>{
+   if(micMasterOn && isAutoMicMode()){
+     tryStartListening(true);
+   }
+ }, 250);
+}
+
+function retryAutoMicStart(){
+ if(!micMasterOn || !isAutoMicMode()) return;
+
+ let tries=0;
+ const attempt=()=>{
+   if(!micMasterOn || !isAutoMicMode()) return;
+   tries++;
+   try{
+     tryStartListening(true);
+   }catch(e){}
+   if(tries<3){
+     setTimeout(attempt, tries*500);
+   }
+ };
+ attempt();
+}
+
 function scheduleAutoMic(){
   clearAutoMicTimers();
 
@@ -606,6 +654,7 @@ function setupRecognition(){
       if(micMasterOn && isAutoMicMode()){
         // O scheduleAutoMic já respeita appAudioActive, mas deixamos uma margem extra.
         scheduleAutoMic();
+retryAutoMicStart();
       }else if(micMasterOn && !isAutoMicMode()){
         stopAllMicActivity();
       }
@@ -640,13 +689,38 @@ function stopVoiceRecognition(){
   $("voiceResult").innerHTML = "";
 }
 
+
+function renderCurrentTrainingCard(){
+ const card=$("card");
+ if(!card || !currentCard) return;
+ card.className="card";
+ card.innerHTML=currentCard.pt;
+ $("answerArea").classList.add("hidden");
+ if($("voiceResult")) $("voiceResult").innerHTML="";
+ updateStats();
+ renderProgress();
+ updateSessionProgress();
+}
+
+function resumePractice(){
+ if(currentCard){
+   renderCurrentTrainingCard();
+   return;
+ }
+ if(practiceQueue && practiceQueue.length){
+   nextCard();
+   return;
+ }
+ startPractice();
+}
+
 function switchPage(page){
 if(page !== "train") stopAllMicActivity();
 ["train","statsPage","add","db","config"].forEach(p=>$("page-"+p).classList.toggle("hidden",p!==page));
 document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.page===page));
 if(page==="db") renderWordList();
 if(page==="statsPage") renderStatsPage();
-if(page==="train") startPractice();
+if(page==="train") resumePractice();
 }
 
 function findDuplicates(pt,de,synonyms,ignoreIndex=null){
@@ -788,7 +862,7 @@ setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);
 }
 
 function deleteWord(i){if(!confirm("Apagar esta palavra?"))return;vocabulary.splice(i,1);saveVocabulary();renderWordList();startPractice()}
-function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;correctCount=0;wrongCount=0;saveVocabulary();renderWordList();startPractice()}
+function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;correctCount=0;wrongCount=0;updateSessionProgress();saveVocabulary();renderWordList();startPractice()}
 
 
 
@@ -804,7 +878,7 @@ function takeSessionSnapshot(){
     sessionInitialSnapshot[i] = {
       memoryLevel: w.memoryLevel || 0,
       mastered: !!w.mastered,
-learningState:$("learningState") ? $("learningState").value : "auto",
+learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
       studyState: w.studyState || "new",
       failCount: w.failCount || 0,
       successCount: w.successCount || 0,
@@ -843,7 +917,7 @@ const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
       <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Consolidadas:</strong><br>${newlyMastered}</div>
       <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Palavras recuperadas:</strong><br>${improved}</div>
       <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Palavras difíceis:</strong><br>${difficult}</div>
-      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Zona crítica ativa ativa:</strong><br>${stillCritical}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Zona crítica ativa:</strong><br>${stillCritical}</div>
       <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas recordadas:</strong><br>${sessionMasteredRemembered}</div>
       <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas esquecidas:</strong><br>${sessionMasteredForgotten}</div>
       <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Recuperadas:</strong><br>${sessionRecoveredConfirmations}</div>
@@ -867,140 +941,374 @@ function showSessionComplete(){
   renderStatsPage();
 }
 
+
+function getMaxCardsPerSession(){
+ const el=$("maxCardsPerSession");
+ return el ? Number(el.value) : 40;
+}
+
+// Mantido apenas por compatibilidade interna. A V10.6.11 removeu o mínimo como critério de fim.
+function getMinCardsPerSession(){
+ return 0;
+}
+
+function getMinReviewsPerSession(){
+ const el=$("minReviewsPerSession");
+ return el ? Number(el.value) : 5;
+}
+
+function getRequiredReviewsForSession(){
+ return Math.min(getMinReviewsPerSession(), sessionPlannedReviews||0);
+}
+
+function getSessionExcludedThreshold(){
+ const el=$("sessionExcludedThreshold");
+ return el ? Number(el.value) : 50;
+}
+
+function getSessionWordDoneMemory(){
+ // V10.6.14: exclusão/domínio da ronda segue o critério pedagógico principal.
+ return masterThreshold();
+}
+
+function getSessionWordDoneStreak(){
+ // V10.6.15: fixed reference used only for display. Streak no longer defines exclusion.
+ return 5;
+}
+
+function getTargetDistinctWords(){
+ const el=$("targetDistinctWords");
+ return el ? Number(el.value) : 12;
+}
+
+function sessionAnsweredCount(){
+ return (correctCount||0) + (wrongCount||0);
+}
+
+function sessionWordKey(word){
+ const idx=vocabulary.indexOf(word);
+ return idx>=0 ? String(idx) : ((word?.pt||"")+"|"+(word?.de||""));
+}
+
+function markSessionWord(word){
+ if(!word) return;
+ sessionWords.add(sessionWordKey(word));
+}
+
+function markSessionWordDone(word){
+ if(!word) return;
+ sessionDoneWords.add(sessionWordKey(word));
+}
+
+function sessionExcludedPercent(){
+ const total=sessionPlannedWords.size || sessionWords.size || 0;
+ if(!total) return 0;
+ return Math.round((sessionDoneWords.size/total)*100);
+}
+
+function estimatedRemainingCards(){
+ const max=getMaxCardsPerSession();
+ const answered=sessionAnsweredCount();
+ const queueRemaining=practiceQueue ? practiceQueue.length : 0;
+ return Math.min(Math.max(0,max-answered), queueRemaining);
+}
+
+function hasCriticalActive(){ return practiceQueue.some(w=>isCritical(w)); }
+function hasConfirmationActive(){ return practiceQueue.some(w=>isConfirmationState(w)); }
+
+function isViableCard(word){
+ if(!word) return false;
+ if(isCritical(word)) return true;
+ if(isConfirmationState(word)) return true;
+ if((word.studyState||"new")==="learning") return true;
+ if(isDueForReview(word) && (word.mastered || word.studyState==="mastered")) return true;
+ return isSessionDue(word);
+}
+
+function hasViableCard(){ return practiceQueue.some(w=>isViableCard(w)); }
+
+function sessionEndBlocker(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return "limite absoluto atingido";
+ if(hasCriticalActive()) return "crítica ativa";
+ if(hasConfirmationActive()) return "confirmação ativa";
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return `faltam revisões ${sessionReviewCount}/${requiredReviews}`;
+ if(sessionExcludedPercent() < getSessionExcludedThreshold()) return `excluídas ${sessionExcludedPercent()}%/${getSessionExcludedThreshold()}%`;
+ return "pronta para terminar";
+}
+
+function canEndSessionAdaptive(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return true;
+ if(hasCriticalActive()) return false;
+ if(hasConfirmationActive()) return false;
+
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return false;
+
+ const enoughExcluded=sessionExcludedPercent() >= getSessionExcludedThreshold();
+
+ // When target exclusion is reached and mandatory blockers are clear, end the round.
+ if(enoughExcluded) return true;
+
+ // If no useful cards are available, end too.
+ if(!hasViableCard()) return true;
+
+ return false;
+}
+
+function canAddMoreSessionCards(){
+ const max=getMaxCardsPerSession();
+ const answered=sessionAnsweredCount();
+ const queued=practiceQueue ? practiceQueue.length : 0;
+ return (answered + queued) < max;
+}
+
+function countEligibleCards(){
+ return practiceQueue ? practiceQueue.filter(w=>isViableCard(w) && isSessionDue(w)).length : 0;
+}
+
+
+function sessionStatusLabel(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return "limite absoluto atingido";
+ if(hasCriticalActive()) return "crítica ativa";
+ if(hasConfirmationActive()) return "confirmação ativa";
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return `aguarda revisões ${sessionReviewCount}/${requiredReviews}`;
+ if(sessionExcludedPercent() >= getSessionExcludedThreshold()) return "pronta para terminar";
+ if(!hasViableCard()) return "sem cartas elegíveis";
+ return `a excluir palavras (${sessionExcludedPercent()}%/${getSessionExcludedThreshold()}%)`;
+}
+
+function updateSessionProgress(){
+ const el=$("sessionProgressInfo");
+ if(!el) return;
+
+ const total=sessionPlannedWords.size || sessionWords.size || 0;
+ const excluded=sessionDoneWords.size || 0;
+ const queue=practiceQueue ? practiceQueue.length : 0;
+ const eligible=countEligibleCards ? countEligibleCards() : queue;
+ const requiredReviews=getRequiredReviewsForSession ? getRequiredReviewsForSession() : 0;
+
+ // Modo normal: compacto para libertar espaço no treino.
+ el.innerHTML=`${sessionAnsweredCount()} respondidas · ${excluded}/${total} excluídas`;
+
+ // Modo debug: mostra apenas informação técnica realmente útil.
+ if($("voiceDebug") && $("voiceDebug").checked){
+   let blocker="";
+   if(hasCriticalActive && hasCriticalActive()) blocker=" · bloqueio: crítica ativa";
+   else if(hasConfirmationActive && hasConfirmationActive()) blocker=" · bloqueio: confirmação ativa";
+   else if(sessionReviewCount < requiredReviews) blocker=` · bloqueio: faltam revisões ${sessionReviewCount}/${requiredReviews}`;
+
+   el.innerHTML += `<br><span class="small">Cartas em espera: ${queue} · disponíveis agora: ${eligible} · revisões ${sessionReviewCount}/${requiredReviews}${blocker}</span>`;
+ }
+}
+
+function shouldRemoveWordFromCurrentRound(word,lastSuccess){
+ if(!word || !lastSuccess) return false;
+
+ // V10.6.14:
+ // Excluída da ronda = atingiu o critério pedagógico principal de domínio.
+ // A streak da ronda NÃO exclui; serve apenas para espaçamento.
+ return (word.memoryLevel||0) >= masterThreshold();
+}
+
+function removeAllFromPracticeQueue(word){
+ if(!word || !practiceQueue) return;
+ practiceQueue=practiceQueue.filter(w=>w!==word);
+}
+
+function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+
+function cfgNumber(id,fallback){
+ const el=$(id);
+ return el ? Number(el.value) : fallback;
+}
+function spacingRange(kind){
+ if(kind==="low") return [cfgNumber("spacingLowMin",2), cfgNumber("spacingLowMax",3)];
+ if(kind==="mid") return [cfgNumber("spacingMidMin",4), cfgNumber("spacingMidMax",7)];
+ if(kind==="high") return [cfgNumber("spacingHighMin",8), cfgNumber("spacingHighMax",12)];
+ if(kind==="veryHigh") return [cfgNumber("spacingVeryHighMin",13), cfgNumber("spacingVeryHighMax",20)];
+ return [2,3];
+}
+function randomSpacing(kind){
+ const r=spacingRange(kind);
+ return randomInt(Math.min(r[0],r[1]), Math.max(r[0],r[1]));
+}
+
+function applySpacingMode(distance){
+ const mode=$("repeatSpacingMode") ? $("repeatSpacingMode").value : "smart";
+ if(mode==="compact") return Math.max(1,Math.round(distance*0.75));
+ if(mode==="wide") return Math.max(1,Math.round(distance*1.35));
+ return distance;
+}
+
+function retentionChallengeCards(active, limit=3){
+ return active
+   .filter(w => (w.memoryLevel||0) >= 75 && (w.stabilityScore||0) >= 50 && (w.learningState||"auto") !== "suspended")
+   .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0))
+   .slice(0,limit);
+}
+
 function buildPracticeQueue(){
-const maxNew=Number($("maxNewWords")?$("maxNewWords").value:5);
-const maxCards=Number($("maxCardsPerSession")?$("maxCardsPerSession").value:40);
+ const maxNew=Number($("maxNewWords")?$("maxNewWords").value:5);
+ const maxCards=getMaxCardsPerSession();
+ const targetUnique=getTargetDistinctWords();
+ const active=activeVocabulary();
 
-const active=activeVocabulary();
-
-const dueMastered = active
-  .filter(w => (w.studyState==="mastered" || w.mastered) && isDueForReview(w))
-  .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0));
-
-const confirmation = active.filter(w => isConfirmationState(w));
-
-const critical = active.filter(w => isCritical(w) && !isConfirmationState(w));
-
-const learning = active
-  .filter(w => !w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
+ const confirmation=active.filter(w=>isConfirmationState(w));
+ const critical=active.filter(w=>isCritical(w) && !isConfirmationState(w));
+ const carryOver=active
+  .filter(w=>!w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
   .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+ const dueMastered=active
+  .filter(w=>(w.studyState==="mastered" || w.mastered) && isDueForReview(w))
+  .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0));
+ const newWords=active.filter(w=>(w.studyState||"new")==="new");
 
-const newWords = active.filter(w => (w.studyState||"new")==="new");
+ let core=[];
+ core.push(...confirmation);
+ core.push(...critical);
+ core.push(...carryOver);
+ core=[...new Set(core)];
 
-let selected=[];
+ const freeSlots=Math.max(0,targetUnique-core.length);
+ core.push(...newWords.slice(0,Math.min(maxNew,freeSlots)));
+ core=[...new Set(core)];
 
-selected.push(...confirmation);
-selected.push(...critical);
-selected.push(...learning);
-selected.push(...dueMastered);
+ let selected=[...core];
+ sessionPlannedReviews=dueMastered.length;
+ dueMastered.forEach(w=>{ if(!selected.includes(w)) selected.push(w); });
+ retentionChallengeCards(active,Math.max(1,Math.round(maxCards*0.10))).forEach(w=>{ if(!selected.includes(w)) selected.push(w); });
 
-// equilíbrio cognitivo adaptativo
-const recentFails = active.reduce((s,w)=>s+Math.max(0,(w.failCount||0)-(sessionInitialSnapshot[vocabulary.indexOf(w)]?.failCount||0)),0);
+ selected = selected.slice(0,Math.max(1,maxCards));
 
-let targetUnique = 12;
+// Snapshot fixo das palavras distintas planeadas para a ronda.
+// A % excluídas usa este denominador, não apenas as palavras já vistas.
+selected.forEach(w=>{
+  markSessionWord(w);
+  sessionPlannedWords.add(sessionWordKey(w));
+});
 
-// fadiga cognitiva:
-// se há muitos erros recentes, reduz carga nova.
-if(recentFails >= 5){
-  targetUnique = 8;
-}
-
-if(recentFails >= 10){
-  targetUnique = 6;
-}
-
-// Novas só entram se houver espaço cognitivo depois de revisão/aprendizagem.
-
-const freeSlots=Math.max(0,targetUnique-selected.length);
-selected.push(...newWords.slice(0,Math.min(maxNew,freeSlots)));
-
-selected=[...new Set(selected)];
-
-// Define quando cada palavra deve estar disponível dentro da sessão.
 selected.forEach(w=>{
   if(isCritical(w)) setSessionDue(w,0);
   else if(isConfirmationState(w)) setSessionDue(w,1);
   else setSessionDue(w,0);
 });
 
-// Pool de palavras únicas. A função nextCard vai agendar repetições dinamicamente.
-return selected.slice(0, Math.max(1, maxCards));
+return selected;
 }
 
-function startPractice(){takeSessionSnapshot();practiceQueue=buildPracticeQueue();correctCount=0;wrongCount=0;nextCard()}
+window.__wakeLock = window.__wakeLock || null;
+
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator && !window.__wakeLock){
+      window.__wakeLock = await navigator.wakeLock.request('screen');
+      window.__wakeLock.addEventListener?.('release',()=>{window.__wakeLock=null;});
+    }
+  }catch(e){}
+}
+
+async function releaseWakeLock(){
+  try{
+    if(window.__wakeLock){
+      await window.__wakeLock.release();
+      window.__wakeLock=null;
+    }
+  }catch(e){}
+}
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible" && micMasterOn && isAutoMicMode()){
+    requestWakeLock();
+  }
+});
+
+
+function resetRoundRuntimeState(){
+ stopAllMicActivity();
+ currentCard=null;
+ practiceQueue=[];
+ correctCount=0;
+ wrongCount=0;
+ sessionWords=new Set();
+ sessionPlannedWords=new Set();
+ sessionDoneWords=new Set();
+ sessionReviewCount=0;
+ sessionPlannedReviews=0;
+ sessionRoundStreak={};
+ sessionLastCorrect={};
+ window.sessionCardCounter=0;
+ vocabulary.forEach(w=>{
+   w.sessionDueAt=0;
+   w.sessionAppearances=0;
+ });
+}
+
+function startPractice(){
+requestWakeLock();
+takeSessionSnapshot();
+resetRoundRuntimeState();
+practiceQueue=buildPracticeQueue();
+updateSessionProgress();
+nextCard();
+}
+
 function nextCard(){
+if(sessionAnsweredCount()>=getMaxCardsPerSession() || canEndSessionAdaptive()){
+  showSessionComplete();
+  updateSessionProgress();
+  return;
+}
 revealed=false;
 $("answerArea").classList.add("hidden");
 if($("voiceResult"))$("voiceResult").innerHTML="";
 const card=$("card");
 card.className="card";
-
-window.sessionCardCounter = (window.sessionCardCounter || 0) + 1;
-
-// Se a palavra atual está em confirmação ou zona crítica, mantém repetição focada.
-if(currentCard && (isConfirmationState(currentCard) || ($("repeatCriticalWords") && $("repeatCriticalWords").checked && isCritical(currentCard)))){
-  card.innerHTML=currentCard.pt;
-  updateStats();
-  renderProgress();
-  speakPortuguese(currentCard.pt);
-  if(micMasterOn && isAutoMicMode()){
-    scheduleAutoMic();
-  }
-  return;
-}
+window.sessionCardCounter=(window.sessionCardCounter||0)+1;
 
 if(practiceQueue.length===0){
-  if(activeVocabulary().length){
-    showSessionComplete();
-  }else{
-    currentCard=null;
-    card.innerHTML="Não há palavras ativas para treinar";
-    updateStats();
-  }
-  return;
+ showSessionComplete();
+ return;
 }
 
-// Escolhe apenas cartas cujo sessionDueAt já chegou.
-let due = practiceQueue
-  .map((c,i)=>({c,i}))
-  .filter(x=>isSessionDue(x.c));
+let due=practiceQueue.map((c,i)=>({c,i})).filter(x=>isViableCard(x.c) && isSessionDue(x.c));
 
 if(!due.length){
-  // Se nada está vencido, escolhe a que vence mais cedo.
-  due = practiceQueue
-    .map((c,i)=>({c,i}))
-    .sort((a,b)=>(a.c.sessionDueAt||0)-(b.c.sessionDueAt||0))
-    .slice(0,1);
+ if(sessionAnsweredCount()>=getMinCardsPerSession()){
+   showSessionComplete();
+   updateSessionProgress();
+   return;
+ }
+ due=practiceQueue.map((c,i)=>({c,i})).sort((a,b)=>(a.c.sessionDueAt||0)-(b.c.sessionDueAt||0)).slice(0,1);
 }
 
-// Prioridade dentro da sessão.
 due.sort((a,b)=>{
-  const ac=a.c, bc=b.c;
-
-  if(isConfirmationState(ac) && !isConfirmationState(bc)) return -1;
-  if(!isConfirmationState(ac) && isConfirmationState(bc)) return 1;
-
-  if(isCritical(ac) && !isCritical(bc)) return -1;
-  if(!isCritical(ac) && isCritical(bc)) return 1;
-
-  return (ac.memoryLevel||0)-(bc.memoryLevel||0);
+ const ac=a.c, bc=b.c;
+ if(isConfirmationState(ac) && !isConfirmationState(bc)) return -1;
+ if(!isConfirmationState(ac) && isConfirmationState(bc)) return 1;
+ if(isCritical(ac) && !isCritical(bc)) return -1;
+ if(!isCritical(ac) && isCritical(bc)) return 1;
+ if(isDueForReview(ac) && !isDueForReview(bc)) return -1;
+ if(!isDueForReview(ac) && isDueForReview(bc)) return 1;
+ return (ac.memoryLevel||0)-(bc.memoryLevel||0);
 });
 
-const pick = due[0];
-currentCard = pick.c;
-
-// Remove esta ocorrência. Se precisar reaparecer, será re-agendada após a resposta.
+const pick=due[0];
+currentCard=pick.c;
+markSessionWord(currentCard);
 practiceQueue.splice(pick.i,1);
-
 currentCard.sessionAppearances=(currentCard.sessionAppearances||0)+1;
 
 card.innerHTML=currentCard.pt;
 updateStats();
 renderProgress();
 speakPortuguese(currentCard.pt);
+forceMicStartSoonNoPortuguese();
 
 if(micMasterOn && isAutoMicMode()){
-  scheduleAutoMic();
+ scheduleAutoMic();
 }
 }
 
@@ -1143,35 +1451,81 @@ function isSessionDue(word){
 }
 
 function plannedRepeatDistance(word){
- if(isCritical(word)) return 0;
+ if(isCritical(word)) return 1;
  if(isConfirmationState(word)) return 2;
 
  const mem = word.memoryLevel || 0;
+ const roundStreak = sessionRoundStreak[sessionWordKey(word)] || 0; // apenas visual/debug
+ const historicalStreak = word.correctStreak || 0; // variável principal do espaçamento
  const stability = word.stabilityScore || 0;
 
  let dist = 3;
+ let category = "rápida";
+ let reason = "";
 
- if(mem < 20) dist = 1;
- else if(mem < 40) dist = 2;
- else if(mem < 60) dist = 4;
- else if(mem < 85) dist = 7;
- else dist = 12;
+ if(mem < 30){
+   dist = randomSpacing("low");
+   category = "rápida";
+   reason = "Memory <30";
+ }else if(mem < 60){
+   if(historicalStreak <= 2){
+     dist = randomSpacing("low");
+     category = "rápida";
+     reason = "Memory 30-60 + streak histórica <=2";
+   }else{
+     dist = randomSpacing("mid");
+     category = "normal";
+     reason = "Memory 30-60 + streak histórica >2";
+   }
+ }else if(mem < masterThreshold()){
+   if(historicalStreak <= 2){
+     dist = randomSpacing("low");
+     category = "rápida";
+     reason = "Memory 60-domínio + streak histórica <=2";
+   }else if(historicalStreak <= 4){
+     dist = randomSpacing("mid");
+     category = "normal";
+     reason = "Memory 60-domínio + streak histórica 3-4";
+   }else if(historicalStreak <= 8){
+     dist = randomSpacing("high");
+     category = "espaçada";
+     reason = "Memory 60-domínio + streak histórica 5-8";
+   }else{
+     dist = randomSpacing("veryHigh");
+     category = "muito espaçada";
+     reason = "Memory 60-domínio + streak histórica >8";
+   }
+ }else{
+   dist = randomSpacing("veryHigh");
+   category = "muito espaçada";
+   reason = "Memory >= domínio";
+ }
 
- // estabilidade alta afasta mais
- if(stability > 60) dist += 4;
+ // Stability ajuda a afastar ligeiramente palavras já consolidadas.
+ if(stability >= 70) dist += 2;
 
- // difíceis reaparecem mais cedo
- if(word.difficultyBoost) dist = Math.max(1, dist-2);
+ if(word.difficultyBoost){
+   dist = Math.max(1, dist-2);
+   reason += " · difícil";
+ }
 
- return Math.max(minRepeatDistance(), dist);
+ dist = Math.max(minRepeatDistance(), applySpacingMode(dist));
+
+ // Preparação para Inspector da Palavra.
+ word.lastSpacingCategory = category;
+ word.lastSpacingDistance = dist;
+ word.lastSpacingReason = reason;
+ word.lastSpacingRoundStreak = roundStreak;
+ word.lastSpacingHistoricalStreak = historicalStreak;
+
+ return dist;
 }
-
 
 function memoryLabel(word){
  const mem=word.memoryLevel||0;
  if((word.studyState||"new")==="relearningConfirmation") return "Confirmação";
  if(word.studyState==="mastered" || word.mastered) return "Dominada";
- if(isCritical(word)) return "Zona crítica ativa ativa";
+ if(isCritical(word)) return "Zona crítica ativa";
  if(mem>=75) return "Quase dominada";
  if(mem>=40) return "Aprendizagem";
  return "Nova/fraca";
@@ -1350,6 +1704,10 @@ if(idx>=0){
  word.wrongStreak=0;
  word.successCount=(word.successCount||0)+1;
  word.seenCount=(word.seenCount||0)+1;
+ const sessionKey=sessionWordKey(word);
+ sessionRoundStreak[sessionKey]=(sessionRoundStreak[sessionKey]||0)+1;
+ sessionLastCorrect[sessionKey]=true;
+ if(isDueForReview(word) && (word.mastered || word.studyState==="mastered")) sessionReviewCount++;
 
  if(wasConfirmation){
    recoverFromConfirmation(word);
@@ -1376,8 +1734,11 @@ if(idx>=0){
    scheduleNextReview(word,true);
  }
 
- // Se ainda não está dominada, agenda repetição dentro da sessão.
- if(!word.mastered && practiceQueue.length < Number($("maxCardsPerSession")?$("maxCardsPerSession").value:40)){
+ // Se a palavra ficou suficientemente forte nesta ronda, sai da ronda atual.
+ if(shouldRemoveWordFromCurrentRound(word,true)){
+   markSessionWordDone(word);
+   removeAllFromPracticeQueue(word);
+ }else if(!word.mastered && canAddMoreSessionCards()){
    setSessionDue(word, plannedRepeatDistance(word));
    practiceQueue.push(word);
  }
@@ -1405,6 +1766,8 @@ if(idx>=0){
  word.wrongStreak=(word.wrongStreak||0)+1;
  word.failCount=(word.failCount||0)+1;
  word.seenCount=(word.seenCount||0)+1;
+ sessionRoundStreak[sessionWordKey(word)]=0;
+ sessionLastCorrect[sessionWordKey(word)]=false;
 
  let errorType="memory";
 
@@ -1445,7 +1808,7 @@ if(idx>=0){
 
  scheduleNextReview(word,false);
 
- if(practiceQueue.length < Number($("maxCardsPerSession")?$("maxCardsPerSession").value:40)){
+ if(canAddMoreSessionCards()){
    setSessionDue(word, plannedRepeatDistance(word));
    practiceQueue.push(word);
  }
@@ -1468,8 +1831,8 @@ if(idx>=0){
 }
 }
 
-function markKnownBySwipe(){if(!currentCard)return;correctCount++;speakGerman(currentCard.de);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória consolidada. Esta palavra passa para revisão ocasional.</div>`:`<div class="answer-title">Já sei ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
-function markCorrect(a){if(!currentCard)return;correctCount++;speakGerman(a);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(a)}</div><div class="small">Memória consolidada. Esta palavra passa para revisão ocasional.</div>`:`<div class="answer-title">Correto ✅</div><div>${formatGerman(a)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
+function markKnownBySwipe(){if(!currentCard)return;correctCount++;speakGerman(currentCard.de);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`:`<div class="answer-title">Já sei ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
+function markCorrect(a){if(!currentCard)return;correctCount++;speakGerman(a);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(a)}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`:`<div class="answer-title">Correto ✅</div><div>${formatGerman(a)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
 function markWrong(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong("skip","");$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Errado ❌</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
 function skipCard(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong("skip","");$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Skip ⏭️</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
 function removeCurrentFromQueue(){
@@ -1487,6 +1850,7 @@ function renderProgress(){
   const box=$("progressBox");
   if(!box || !currentCard){ if(box) box.innerHTML=""; return; }
   const streak=currentCard.correctStreak||0;
+  const roundStreak=sessionRoundStreak[sessionWordKey(currentCard)]||0;
   const mem=Math.round(currentCard.memoryLevel||0);
   const label=memoryLabel(currentCard);
   const state=currentCard.studyState||"new";
@@ -1496,12 +1860,14 @@ function renderProgress(){
   let dots="";
   const filled=Math.round((mem/100)*MASTER_LIMIT);
   for(let i=1;i<=MASTER_LIMIT;i++) dots+=`<span class="dot ${i<=filled ? "on "+level : ""}">●</span>`;
-  box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memória ${mem}% ${isCritical(currentCard)?"· zona crítica":""} · acertos seguidos ${streak} · ${state} ${hard}</div>`;
+  box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memória ${mem}% ${isCritical(currentCard)?"· zona crítica":""} · streak ronda ${roundStreak}/${getSessionWordDoneStreak()} · streak histórica ${streak} · ${state} ${hard}</div>`;
 }
 
 function updateStats(){
+updateSessionProgress();
+
 const mastered=vocabulary.filter(x=>x.mastered).length, active=activeVocabulary().length, hard=vocabulary.filter(x=>x.difficultyBoost&&!x.mastered).length;
-$("stats").textContent=`${active} ativas · ${mastered} dominadas · ${hard} difíceis · ${practiceQueue.length} cartões nesta sessão · ${correctCount} certas · ${wrongCount} falhadas/skip`;
+$("stats").textContent=`${active} ativas · ${mastered} excluídas · ${hard} difíceis · ${practiceQueue.length} cartões nesta sessão · ${correctCount} certas · ${wrongCount} falhadas/skip`;
 renderProgress();
 }
 
@@ -1577,7 +1943,7 @@ function importJsonBackup(e){
         wrongStreak: w.wrongStreak || 0,
         difficultyBoost: !!w.difficultyBoost,
         mastered: !!w.mastered,
-learningState:$("learningState") ? $("learningState").value : "auto",
+learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
         memoryLevel: w.memoryLevel || 0,
         studyState: w.studyState || (w.mastered ? "mastered" : "new"),
         successCount: w.successCount || 0,
@@ -1767,4 +2133,68 @@ $("fileInput").onchange=loadImportFile;$("jsonInput").onchange=importJsonBackup;
 ["ptWord","deWord","synonyms"].forEach(id=>$(id).addEventListener("input",renderDuplicateWarning));
 $("searchBox").oninput=renderWordList;$("sortMode").onchange=renderWordList;
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
-loadVocabulary();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
+
+function migrateLegacyWords(){
+ if(!Array.isArray(vocabulary)) return false;
+
+ let changed=false;
+ const now=Date.now();
+
+ vocabulary.forEach((w,idx)=>{
+   if(!w.learningState){
+     w.learningState = w.mastered ? "mastered" : "auto";
+     changed=true;
+   }
+
+   if(w.mastered || w.learningState==="mastered"){
+      if(!w.nextReviewAt){
+         // spread legacy reviews across the next 12-48h to avoid flooding one session
+         const hours = 12 + Math.floor(Math.random()*36);
+         w.nextReviewAt = now + (hours * 60 * 60 * 1000);
+         changed=true;
+      }
+
+      if((w.memoryLevel||0)===0){
+        w.memoryLevel = 80;
+        changed=true;
+      }
+
+      if((w.stabilityScore||0)===0){
+        w.stabilityScore = 60;
+        changed=true;
+      }
+
+      if((w.xp||0)===0){
+        w.xp = 25;
+        changed=true;
+      }
+
+      if(!w.reviewIntervalDays){
+        w.reviewIntervalDays = 1;
+        changed=true;
+      }
+   }
+
+   if(!w.errorStats){
+     w.errorStats={memory:0,article:0,grammar:0};
+     changed=true;
+   }
+
+   // clean old experimental bucket
+   if(w.errorStats && w.errorStats.pronunciation){
+     w.errorStats.memory = Number(w.errorStats.memory||0) + Number(w.errorStats.pronunciation||0);
+     delete w.errorStats.pronunciation;
+     changed=true;
+   }
+ });
+
+ if(changed){
+   saveVocabulary();
+ }
+
+ return changed;
+}
+
+
+loadVocabulary();
+migrateLegacyWords();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
