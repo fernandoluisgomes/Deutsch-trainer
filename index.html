@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.6.16.3</title>
+<title>Deutsch Trainer V10.6.16.4</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -45,7 +45,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.6.16.3</h1>
+<h1>Deutsch Trainer V10.6.16.4</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
 <button class="tab" data-page="statsPage">Estatísticas</button>
@@ -340,6 +340,11 @@ function allGermanTerms(c){return getAllAnswers(c).map(normalize)}
 function activeVocabulary(){
 return vocabulary.filter(x => (x.learningState||"auto") !== "suspended" && (x.learningState||"auto") !== "mastered" && !x.mastered);
 }
+
+function reviewVocabulary(){
+return vocabulary.filter(x => (x.learningState||"auto") !== "suspended");
+}
+
 
 function cleanGermanForSpeech(text){
   const value = (text || "").trim();
@@ -1460,16 +1465,21 @@ function buildPracticeQueue(){
  const maxCards=getMaxCardsPerSession();
  const targetUnique=getTargetDistinctWords();
  const active=activeVocabulary();
+ const reviewPool=reviewVocabulary();
 
  const confirmation=active.filter(w=>isConfirmationState(w));
  const critical=active.filter(w=>isCritical(w) && !isConfirmationState(w));
  const carryOver=active
   .filter(w=>!w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
   .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
- const dueMastered=active
-  .filter(w=>(w.studyState==="mastered" || w.mastered) && isDueForReview(w))
+ const dueMastered = reviewPool
+  .filter(w =>
+    (w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered")
+    && isDueForReview(w)
+  )
   .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0));
- const newWords=active.filter(w=>(w.studyState||"new")==="new");
+
+const newWords=active.filter(w=>(w.studyState||"new")==="new");
 
  let core=[];
  core.push(...confirmation);
@@ -2439,6 +2449,33 @@ $("fileInput").onchange=loadImportFile;$("jsonInput").onchange=importJsonBackup;
 $("searchBox").oninput=renderWordList;$("sortMode").onchange=renderWordList;
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
 
+function normalizeMasteredMemory(){
+ let changed=false;
+ const threshold = (typeof masterThreshold==="function") ? masterThreshold() : 85;
+
+ vocabulary.forEach(w=>{
+   const isMastered =
+     !!w.mastered ||
+     (w.studyState||"new")==="mastered" ||
+     (w.learningState||"auto")==="mastered";
+
+   if(isMastered && (w.memoryLevel||0) < threshold){
+     w.memoryLevel = threshold;
+     changed=true;
+   }
+
+   if((w.learningState||"auto")==="mastered"){
+     w.mastered=true;
+     w.studyState="mastered";
+   }
+ });
+
+ if(changed){
+   localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
+ }
+ return changed;
+}
+
 function migrateLegacyWords(){
  if(!Array.isArray(vocabulary)) return false;
 
@@ -2502,7 +2539,7 @@ function migrateLegacyWords(){
 
 
 loadVocabulary();
-migrateLegacyWords();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
+migrateLegacyWords();normalizeMasteredMemory();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
 </script>
 </body>
 </html>

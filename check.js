@@ -36,6 +36,11 @@ function activeVocabulary(){
 return vocabulary.filter(x => (x.learningState||"auto") !== "suspended" && (x.learningState||"auto") !== "mastered" && !x.mastered);
 }
 
+function reviewVocabulary(){
+return vocabulary.filter(x => (x.learningState||"auto") !== "suspended");
+}
+
+
 function cleanGermanForSpeech(text){
   const value = (text || "").trim();
   if($("speakArticle") && $("speakArticle").checked) return value;
@@ -1155,16 +1160,21 @@ function buildPracticeQueue(){
  const maxCards=getMaxCardsPerSession();
  const targetUnique=getTargetDistinctWords();
  const active=activeVocabulary();
+ const reviewPool=reviewVocabulary();
 
  const confirmation=active.filter(w=>isConfirmationState(w));
  const critical=active.filter(w=>isCritical(w) && !isConfirmationState(w));
  const carryOver=active
   .filter(w=>!w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
   .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
- const dueMastered=active
-  .filter(w=>(w.studyState==="mastered" || w.mastered) && isDueForReview(w))
+ const dueMastered = reviewPool
+  .filter(w =>
+    (w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered")
+    && isDueForReview(w)
+  )
   .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0));
- const newWords=active.filter(w=>(w.studyState||"new")==="new");
+
+const newWords=active.filter(w=>(w.studyState||"new")==="new");
 
  let core=[];
  core.push(...confirmation);
@@ -2134,6 +2144,33 @@ $("fileInput").onchange=loadImportFile;$("jsonInput").onchange=importJsonBackup;
 $("searchBox").oninput=renderWordList;$("sortMode").onchange=renderWordList;
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
 
+function normalizeMasteredMemory(){
+ let changed=false;
+ const threshold = (typeof masterThreshold==="function") ? masterThreshold() : 85;
+
+ vocabulary.forEach(w=>{
+   const isMastered =
+     !!w.mastered ||
+     (w.studyState||"new")==="mastered" ||
+     (w.learningState||"auto")==="mastered";
+
+   if(isMastered && (w.memoryLevel||0) < threshold){
+     w.memoryLevel = threshold;
+     changed=true;
+   }
+
+   if((w.learningState||"auto")==="mastered"){
+     w.mastered=true;
+     w.studyState="mastered";
+   }
+ });
+
+ if(changed){
+   localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
+ }
+ return changed;
+}
+
 function migrateLegacyWords(){
  if(!Array.isArray(vocabulary)) return false;
 
@@ -2197,4 +2234,4 @@ function migrateLegacyWords(){
 
 
 loadVocabulary();
-migrateLegacyWords();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
+migrateLegacyWords();normalizeMasteredMemory();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
