@@ -1,7 +1,7 @@
 
 const STORAGE_KEY="vocabularyGermanTrainer_v5"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
-let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;let sessionWords=new Set(),sessionPlannedWords=new Set(),sessionDoneWords=new Set(),sessionReviewCount=0,sessionPlannedReviews=0,sessionRoundStreak={},sessionLastCorrect={};let sessionStartedAt=Date.now(),sessionInitialSnapshot={};window.sessionCardCounter=0;let sessionMasteredRemembered=0,sessionMasteredForgotten=0,sessionRecoveredConfirmations=0,sessionFailedConfirmations=0;
+let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;let sessionWords=new Set(),sessionPlannedWords=new Set(),sessionDoneWords=new Set(),sessionReviewCount=0,sessionPlannedReviews=0,sessionDueReviewsTotal=0,sessionRoundStreak={},sessionLastCorrect={};let sessionStartedAt=Date.now(),sessionInitialSnapshot={};window.sessionCardCounter=0;let sessionMasteredRemembered=0,sessionMasteredForgotten=0,sessionRecoveredConfirmations=0,sessionFailedConfirmations=0;
 let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let micMasterOn=false;let autoMicTimer=null;let autoMicRetryTimer=null;let appIsSpeaking=false;let appSpeechCooldownUntil=0;let autoMicSilentStartedAt=0;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
 
 function $(id){return document.getElementById(id)}
@@ -1094,17 +1094,16 @@ function updateSessionProgress(){
  const eligible=countEligibleCards ? countEligibleCards() : queue;
  const requiredReviews=getRequiredReviewsForSession ? getRequiredReviewsForSession() : 0;
 
- // Modo normal: compacto para libertar espaço no treino.
  el.innerHTML=`${sessionAnsweredCount()} respondidas · ${excluded}/${total} excluídas`;
 
- // Modo debug: mostra apenas informação técnica realmente útil.
  if($("voiceDebug") && $("voiceDebug").checked){
    let blocker="";
    if(hasCriticalActive && hasCriticalActive()) blocker=" · bloqueio: crítica ativa";
    else if(hasConfirmationActive && hasConfirmationActive()) blocker=" · bloqueio: confirmação ativa";
    else if(sessionReviewCount < requiredReviews) blocker=` · bloqueio: faltam revisões ${sessionReviewCount}/${requiredReviews}`;
 
-   el.innerHTML += `<br><span class="small">Cartas em espera: ${queue} · disponíveis agora: ${eligible} · revisões ${sessionReviewCount}/${requiredReviews}${blocker}</span>`;
+   const reviewDoneDisplay = sessionReviewCount > requiredReviews ? `${requiredReviews}+` : sessionReviewCount;
+   el.innerHTML += `<br><span class="small">Cartas em espera: ${queue} · disponíveis agora: ${eligible} · revisões feitas: ${reviewDoneDisplay}/${requiredReviews} · vencidas: ${sessionDueReviewsTotal||0} · incluídas: ${sessionPlannedReviews||0}${blocker}</span>`;
  }
 }
 
@@ -1167,15 +1166,21 @@ function buildPracticeQueue(){
  const carryOver=active
   .filter(w=>!w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
   .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
- const dueMastered = reviewPool
+
+ const dueMasteredAll = reviewPool
   .filter(w =>
     (w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered")
     && isDueForReview(w)
   )
   .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0));
 
-const newWords=active.filter(w=>(w.studyState||"new")==="new");
+ sessionDueReviewsTotal = dueMasteredAll.length;
+ const reviewLimit = getMinReviewsPerSession();
+ const dueMastered = dueMasteredAll.slice(0, reviewLimit);
 
+ const newWords=active.filter(w=>(w.studyState||"new")==="new");
+
+ // Main round slots: confirmations, critical, carry-over and new words.
  let core=[];
  core.push(...confirmation);
  core.push(...critical);
@@ -1184,29 +1189,32 @@ const newWords=active.filter(w=>(w.studyState||"new")==="new");
 
  const freeSlots=Math.max(0,targetUnique-core.length);
  core.push(...newWords.slice(0,Math.min(maxNew,freeSlots)));
- core=[...new Set(core)];
+ core=[...new Set(core)].slice(0,targetUnique);
 
+ // Reviews are extra slots independent from the main distinct-word target.
  let selected=[...core];
- sessionPlannedReviews=dueMastered.length;
  dueMastered.forEach(w=>{ if(!selected.includes(w)) selected.push(w); });
- retentionChallengeCards(active,Math.max(1,Math.round(maxCards*0.10))).forEach(w=>{ if(!selected.includes(w)) selected.push(w); });
+ sessionPlannedReviews=dueMastered.length;
 
- selected = selected.slice(0,Math.max(1,maxCards));
+ // Challenge cards remain tiny and optional; do not crowd reviews.
+ retentionChallengeCards(active,Math.max(1,Math.round(maxCards*0.05))).forEach(w=>{
+   if(!selected.includes(w)) selected.push(w);
+ });
 
-// Snapshot fixo das palavras distintas planeadas para a ronda.
-// A % excluídas usa este denominador, não apenas as palavras já vistas.
-selected.forEach(w=>{
+ selected = selected.slice(0, Math.max(1, maxCards + reviewLimit));
+
+ selected.forEach(w=>{
   markSessionWord(w);
   sessionPlannedWords.add(sessionWordKey(w));
-});
+ });
 
-selected.forEach(w=>{
+ selected.forEach(w=>{
   if(isCritical(w)) setSessionDue(w,0);
   else if(isConfirmationState(w)) setSessionDue(w,1);
   else setSessionDue(w,0);
-});
+ });
 
-return selected;
+ return selected;
 }
 
 window.__wakeLock = window.__wakeLock || null;
@@ -1681,19 +1689,22 @@ function updateMemory(word,delta){
 
  word.memoryLevel=Math.max(minLevel,Math.min(100,(word.memoryLevel||0)+delta));
 
- const enoughMemory = word.memoryLevel>=masterThreshold();
- const enoughStreak = (word.correctStreak||0)>=minStreakToMaster();
- const enoughExposure = (word.seenCount||0)>=minExposuresToMaster();
-
- if(enoughMemory && enoughStreak && enoughExposure){
+ // V10.6.16.5:
+ // Single source of truth for mastery: Memory >= configured mastery threshold.
+ if((word.memoryLevel||0) >= masterThreshold()){
    word.studyState="mastered";
    word.mastered=true;
+   if((word.learningState||"auto") !== "suspended"){
+     word.learningState = "mastered";
+   }
  }else{
    if(word.studyState==="mastered"){
      word.studyState="learning";
    }
    word.mastered=false;
-
+   if((word.learningState||"auto")==="mastered"){
+     word.learningState="auto";
+   }
    if(word.studyState!=="new"){
      word.studyState="learning";
    }
@@ -1884,7 +1895,21 @@ renderProgress();
 function renderWordList(){
 const q=normalize($("searchBox")?.value||""),sort=$("sortMode")?.value||"recent";let list=vocabulary.map((item,index)=>({item,index}));
 if(q) list=list.filter(x=>[x.item.pt,x.item.de,(x.item.synonyms||[]).join(" "),x.item.sentence||""].some(v=>normalize(v).includes(q)));
-if(sort==="pt") list.sort((a,b)=>a.item.pt.localeCompare(b.item.pt));else if(sort==="de") list.sort((a,b)=>a.item.de.localeCompare(b.item.de));else if(sort==="mastered") list.sort((a,b)=>(b.item.mastered?1:0)-(a.item.mastered?1:0));else list.sort((a,b)=>(b.item.createdAt||0)-(a.item.createdAt||0));
+if(sort==="pt") list.sort((a,b)=>a.item.pt.localeCompare(b.item.pt));
+else if(sort==="de") list.sort((a,b)=>a.item.de.localeCompare(b.item.de));
+else if(sort==="mastered") list.sort((a,b)=>(b.item.mastered?1:0)-(a.item.mastered?1:0));
+else if(sort==="memoryDesc") list.sort((a,b)=>(b.item.memoryLevel||0)-(a.item.memoryLevel||0));
+else if(sort==="memoryAsc") list.sort((a,b)=>(a.item.memoryLevel||0)-(b.item.memoryLevel||0));
+else if(sort==="streakDesc") list.sort((a,b)=>(b.item.correctStreak||0)-(a.item.correctStreak||0));
+else if(sort==="streakAsc") list.sort((a,b)=>(a.item.correctStreak||0)-(b.item.correctStreak||0));
+else if(sort==="dueFirst") list.sort((a,b)=>{
+  const ad=isDueForReview(a.item) && (a.item.mastered || a.item.studyState==="mastered" || (a.item.learningState||"auto")==="mastered");
+  const bd=isDueForReview(b.item) && (b.item.mastered || b.item.studyState==="mastered" || (b.item.learningState||"auto")==="mastered");
+  if(ad!==bd) return bd-ad;
+  return (a.item.nextReviewAt||Infinity)-(b.item.nextReviewAt||Infinity);
+});
+else if(sort==="reviewOldest") list.sort((a,b)=>(a.item.nextReviewAt||Infinity)-(b.item.nextReviewAt||Infinity));
+else list.sort((a,b)=>(b.item.createdAt||0)-(a.item.createdAt||0));
 
 const avgMemory = vocabulary.length ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/vocabulary.length) : 0;
 const dueNow = vocabulary.filter(w=>isDueForReview(w) && (w.mastered || w.studyState==="mastered")).length;
