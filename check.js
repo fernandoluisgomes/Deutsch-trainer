@@ -1084,6 +1084,19 @@ function sessionStatusLabel(){
  return `a excluir palavras (${sessionExcludedPercent()}%/${getSessionExcludedThreshold()}%)`;
 }
 
+
+function roundDetailsIsOpen(){
+ const current=$("roundDetails");
+ if(current) return !!current.open;
+ return localStorage.getItem("roundDetailsOpen")==="1";
+}
+
+function rememberRoundDetailsState(){
+ const d=$("roundDetails");
+ if(!d) return;
+ d.addEventListener("toggle",()=>localStorage.setItem("roundDetailsOpen", d.open ? "1" : "0"));
+}
+
 function updateSessionProgress(){
  const el=$("sessionProgressInfo");
  if(!el) return;
@@ -1093,17 +1106,30 @@ function updateSessionProgress(){
  const queue=practiceQueue ? practiceQueue.length : 0;
  const eligible=countEligibleCards ? countEligibleCards() : queue;
  const requiredReviews=getRequiredReviewsForSession ? getRequiredReviewsForSession() : 0;
+ const reviewDoneDisplay=sessionReviewCount>requiredReviews?`${requiredReviews}+`:sessionReviewCount;
 
  el.innerHTML=`${sessionAnsweredCount()} respondidas · ${excluded}/${total} excluídas`;
 
  if($("voiceDebug") && $("voiceDebug").checked){
+   const detailsOpen=roundDetailsIsOpen();
    let blocker="";
-   if(hasCriticalActive && hasCriticalActive()) blocker=" · bloqueio: crítica ativa";
-   else if(hasConfirmationActive && hasConfirmationActive()) blocker=" · bloqueio: confirmação ativa";
-   else if(sessionReviewCount < requiredReviews) blocker=` · bloqueio: faltam revisões ${sessionReviewCount}/${requiredReviews}`;
+   if(hasCriticalActive && hasCriticalActive()) blocker="crítica ativa";
+   else if(hasConfirmationActive && hasConfirmationActive()) blocker="confirmação ativa";
+   else if(sessionReviewCount < requiredReviews) blocker=`faltam revisões ${sessionReviewCount}/${requiredReviews}`;
+   else blocker="sem bloqueio relevante";
 
-   const reviewDoneDisplay = sessionReviewCount > requiredReviews ? `${requiredReviews}+` : sessionReviewCount;
-   el.innerHTML += `<br><span class="small">Cartas em espera: ${queue} · disponíveis agora: ${eligible} · revisões feitas: ${reviewDoneDisplay}/${requiredReviews} · vencidas: ${sessionDueReviewsTotal||0} · incluídas: ${sessionPlannedReviews||0}${blocker}</span>`;
+   el.innerHTML += `<details id="roundDetails" class="compact-details"${detailsOpen ? " open" : ""}>
+     <summary>Estado da ronda</summary>
+     Respondidas: ${sessionAnsweredCount()}<br>
+     Excluídas: ${excluded}/${total}<br>
+     Cartas em espera: ${queue}<br>
+     Disponíveis agora: ${eligible}<br>
+     Revisões feitas: ${reviewDoneDisplay}/${requiredReviews}<br>
+     Revisões vencidas: ${sessionDueReviewsTotal||0}<br>
+     Revisões incluídas: ${sessionPlannedReviews||0}<br>
+     Bloqueio: ${blocker}
+   </details>`;
+   rememberRoundDetailsState();
  }
 }
 
@@ -1146,6 +1172,159 @@ function applySpacingMode(distance){
  if(mode==="wide") return Math.max(1,Math.round(distance*1.35));
  return distance;
 }
+
+
+function getCardType(w){
+ const de=(w?.de||"").trim();
+ if(!de) return "normal";
+
+ // Manual override para futuras versões/importações.
+ if(w.cardType==="sentence" || w.type==="sentence") return "sentence";
+ if(w.cardType==="normal" || w.type==="normal" || w.type==="word" || w.type==="expression") return "normal";
+
+ const lower=de.toLowerCase();
+
+ // Frase clara: pontuação final no campo alemão principal.
+ if(/[.!?]$/.test(de)) return "sentence";
+
+ // Frase provável: sujeito/início de frase + verbo conjugado.
+ const starters=/^(ich|du|er|sie|es|wir|ihr|das|dies|dieser|diese|dieses|man)\b/i;
+ const conjugated=/\b(bin|bist|ist|sind|seid|war|waren|wäre|habe|hast|hat|haben|habt|hatte|hatten|werde|wirst|wird|werden|kann|kannst|können|könnt|muss|musst|müssen|müsst|soll|sollst|sollen|sollt|will|willst|wollen|wollt|möchte|möchtest|möchten|mag|magst|glaube|glaubst|glaubt|denke|denkst|denkt|gehe|gehst|geht|komme|kommst|kommt|fahre|fährst|fährt|mache|machst|macht|brauche|brauchst|braucht|freue|freust|freut|finde|findest|findet|sehe|siehst|sieht)\b/i;
+
+ if(starters.test(lower) && conjugated.test(lower)) return "sentence";
+
+ // Padrões completos comuns.
+ if(/\b(es gibt|das ist|ich bin|ich habe|ich möchte|ich muss|ich kann|wir sind|wir haben|er ist|sie ist)\b/i.test(lower)) return "sentence";
+
+ // Expressões como "auf jeden Fall", "sich freuen auf" e "überzeugt sein" ficam normais.
+ return "normal";
+}
+
+function isPhraseCard(w){
+ return getCardType(w)==="sentence";
+}
+
+function cardTypeLabel(w){
+ return getCardType(w)==="sentence" ? "Frase" : "Palavra";
+}
+
+
+
+function getMinPhrasesPerSession(){
+ const el=$("minPhrasesPerSession");
+ return el ? Number(el.value) : 1;
+}
+
+function shouldShowInspector(){
+ const el=$("showWordInspector");
+ return !!(el && el.checked);
+}
+
+function calculatedWordState(w){
+ if(!w) return "—";
+ if(isCritical(w)) return "Zona crítica";
+ if(isConfirmationState(w)) return "Confirmação";
+ if((w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered") && isDueForReview(w)) return "Revisão vencida";
+ if(w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered" || (w.memoryLevel||0)>=masterThreshold()) return "Dominada";
+ if((w.memoryLevel||0) >= Math.max(0, masterThreshold()-10)) return "Quase dominada";
+ if((w.studyState||"new")==="new" && (w.seenCount||0)===0) return "Nova";
+ return "Aprendizagem";
+}
+
+function reviewDueLabel(w){
+ if(!w || !w.nextReviewAt) return "sem data";
+ const diff=Date.now()-w.nextReviewAt;
+ const days=Math.floor(Math.abs(diff)/86400000);
+ if(diff>=0) return days===0 ? "vencida hoje" : `vencida há ${days} dia(s)`;
+ return days===0 ? "hoje" : `daqui a ${days} dia(s)`;
+}
+
+function cardDistanceInfo(w){
+ const now=window.sessionCardCounter||0;
+ const lastSeen=w && w.lastSeenCardIndex ? now-w.lastSeenCardIndex : null;
+ const due=w && w.sessionDueAt ? w.sessionDueAt-now : null;
+ return {
+   lastSeen:lastSeen===null ? "—" : `há ${Math.max(0,lastSeen)} carta(s)`,
+   nextDue:due===null ? "—" : `~${Math.max(0,due)} carta(s)`
+ };
+}
+
+function escapeHTML(s){
+ return String(s||"").replace(/[&<>"']/g, m => ({
+   "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ }[m]));
+}
+
+function showModal(title, body){
+ let modal=$("appModal");
+ if(!modal){
+   modal=document.createElement("div");
+   modal.id="appModal";
+   modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+   modal.innerHTML=`<div style="background:white;color:#111;max-width:520px;width:100%;max-height:85vh;overflow:auto;border-radius:18px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
+     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px">
+       <h2 id="appModalTitle" style="margin:0;font-size:18px"></h2>
+       <button id="appModalClose" type="button">Fechar</button>
+     </div>
+     <div id="appModalBody"></div>
+   </div>`;
+   document.body.appendChild(modal);
+   $("appModalClose").onclick=()=>modal.style.display="none";
+   modal.onclick=(e)=>{ if(e.target===modal) modal.style.display="none"; };
+ }
+ $("appModalTitle").textContent=title;
+ $("appModalBody").innerHTML=body;
+ modal.style.display="flex";
+}
+
+function openWordInspector(index){
+ const w=vocabulary[index];
+ if(!w) return;
+ const dist=cardDistanceInfo(w);
+ const threshold=masterThreshold();
+ const missing=Math.max(0, threshold-(w.memoryLevel||0));
+ const due=isDueForReview(w);
+ const roundStreak=sessionRoundStreak[sessionWordKey(w)]||0;
+
+ const technical=`<details style="margin-top:10px">
+<summary><b>Detalhes técnicos</b></summary>
+<div class="small" style="margin-top:8px;line-height:1.55">
+Categoria spacing: ${w.lastSpacingCategory||"—"}<br>
+Distância sorteada: ${w.lastSpacingDistance||"—"}<br>
+Motivo spacing: ${w.lastSpacingReason||"—"}<br>
+Streak usada no spacing: ${w.lastSpacingHistoricalStreak ?? w.correctStreak ?? 0}<br>
+Streak ronda no último cálculo: ${w.lastSpacingRoundStreak ?? roundStreak}<br>
+sessionDueAt: ${w.sessionDueAt||"—"}<br>
+lastSeenCardIndex: ${w.lastSeenCardIndex||"—"}
+</div>
+</details>`;
+
+ const body=`<div style="line-height:1.55">
+<b>${escapeHTML(w.de||"")}</b><br>
+<span class="small">${escapeHTML(w.pt||"")}</span>
+<hr>
+<b>Estado:</b> ${calculatedWordState(w)}<br>
+<b>Tipo:</b> ${cardTypeLabel(w)}<br>
+<b>Memory:</b> ${Math.round(w.memoryLevel||0)}%<br>
+<b>Domínio:</b> ${threshold}%${missing>0 ? ` · faltam ${Math.round(missing)}%` : ""}<br>
+<b>Stability:</b> ${Math.round(w.stabilityScore||0)}%<br>
+<b>XP:</b> ${Math.round(w.xp||0)}<br>
+<b>Streak histórica:</b> ${w.correctStreak||0}<br>
+<b>Streak ronda:</b> ${roundStreak}<br>
+<hr>
+<b>Última aparição:</b> ${dist.lastSeen}<br>
+<b>Próxima aparição prevista:</b> ${dist.nextDue}<br>
+<hr>
+<b>Próxima revisão:</b> ${w.nextReviewAt ? new Date(w.nextReviewAt).toLocaleDateString() : "—"}<br>
+<b>Estado da revisão:</b> ${reviewDueLabel(w)}${due ? " ✅" : ""}<br>
+${isCritical(w) ? "<b>Zona crítica:</b> ativa<br>" : ""}
+${isConfirmationState(w) ? "<b>Confirmação:</b> ativa<br>" : ""}
+${technical}
+</div>`;
+
+ showModal("Inspector da Palavra", body);
+}
+
 
 function retentionChallengeCards(active, limit=3){
  return active
@@ -1190,6 +1369,44 @@ function buildPracticeQueue(){
  const freeSlots=Math.max(0,targetUnique-core.length);
  core.push(...newWords.slice(0,Math.min(maxNew,freeSlots)));
  core=[...new Set(core)].slice(0,targetUnique);
+
+ function ensureMinimumPhrases(coreList){
+   const minPhrases=getMinPhrasesPerSession();
+   if(minPhrases<=0) return coreList;
+
+   let result=[...coreList];
+   let phraseCount=result.filter(isPhraseCard).length;
+   if(phraseCount>=minPhrases) return result;
+
+   const protectedSet=new Set([...confirmation,...critical]);
+   const candidates=active
+     .filter(w=>isPhraseCard(w) && !result.includes(w) && !protectedSet.has(w))
+     .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+
+   for(const phrase of candidates){
+     if(phraseCount>=minPhrases) break;
+     if(result.length < targetUnique){
+       result.push(phrase);
+       phraseCount++;
+       continue;
+     }
+     let replaceIdx=-1;
+     let replaceScore=-Infinity;
+     result.forEach((w,i)=>{
+       if(protectedSet.has(w)) return;
+       const score=(w.memoryLevel||0) + (isPhraseCard(w)?-1000:0);
+       if(score>replaceScore){ replaceScore=score; replaceIdx=i; }
+     });
+     if(replaceIdx>=0){
+       result[replaceIdx]=phrase;
+       phraseCount++;
+     }
+   }
+   return [...new Set(result)].slice(0,targetUnique);
+ }
+
+ core=ensureMinimumPhrases(core);
+
 
  // Reviews are extra slots independent from the main distinct-word target.
  let selected=[...core];
@@ -1318,6 +1535,7 @@ currentCard=pick.c;
 markSessionWord(currentCard);
 practiceQueue.splice(pick.i,1);
 currentCard.sessionAppearances=(currentCard.sessionAppearances||0)+1;
+currentCard.lastSeenCardIndex=window.sessionCardCounter;
 
 card.innerHTML=currentCard.pt;
 updateStats();
@@ -1867,6 +2085,16 @@ function progressLevel(streak){
   return "low";
 }
 
+function compactCardMeta(w){
+ if(!w) return "";
+ const bits=[];
+ if(w.difficultyBoost) bits.push("Difícil");
+ const state=(typeof calculatedWordState==="function") ? calculatedWordState(w) : memoryLabel(w);
+ bits.push(state);
+ bits.push(`Mem ${Math.round(w.memoryLevel||0)}%`);
+ return bits.join(" · ");
+}
+
 function renderProgress(){
   const box=$("progressBox");
   if(!box || !currentCard){ if(box) box.innerHTML=""; return; }
@@ -1881,7 +2109,7 @@ function renderProgress(){
   let dots="";
   const filled=Math.round((mem/100)*MASTER_LIMIT);
   for(let i=1;i<=MASTER_LIMIT;i++) dots+=`<span class="dot ${i<=filled ? "on "+level : ""}">●</span>`;
-  box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memória ${mem}% ${isCritical(currentCard)?"· zona crítica":""} · streak ronda ${roundStreak}/${getSessionWordDoneStreak()} · streak histórica ${streak} · ${state} ${hard}</div>`;
+  box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memória ${mem}% ${isCritical(currentCard)?"· zona crítica":""} · streak ronda ${roundStreak} · streak histórica ${streak} · ${state} ${hard}</div>`;
 }
 
 function updateStats(){
@@ -1893,8 +2121,30 @@ renderProgress();
 }
 
 function renderWordList(){
-const q=normalize($("searchBox")?.value||""),sort=$("sortMode")?.value||"recent";let list=vocabulary.map((item,index)=>({item,index}));
+const q=normalize($("searchBox")?.value||"");
+const sort=$("sortMode")?.value||"recent";
+const filterMode=$("dbFilterMode")?.value||"all";
+
+let list=vocabulary.map((item,index)=>({item,index}));
+
 if(q) list=list.filter(x=>[x.item.pt,x.item.de,(x.item.synonyms||[]).join(" "),x.item.sentence||""].some(v=>normalize(v).includes(q)));
+
+if(filterMode!=="all"){
+ list=list.filter(x=>{
+   const w=x.item;
+   const state=calculatedWordState(w);
+   if(filterMode==="words") return !isPhraseCard(w);
+   if(filterMode==="phrases") return isPhraseCard(w);
+   if(filterMode==="new") return state==="Nova";
+   if(filterMode==="learning") return state==="Aprendizagem" || state==="Quase dominada";
+   if(filterMode==="critical") return isCritical(w);
+   if(filterMode==="confirmation") return isConfirmationState(w);
+   if(filterMode==="mastered") return state==="Dominada" || state==="Revisão vencida";
+   if(filterMode==="due") return state==="Revisão vencida";
+   return true;
+ });
+}
+
 if(sort==="pt") list.sort((a,b)=>a.item.pt.localeCompare(b.item.pt));
 else if(sort==="de") list.sort((a,b)=>a.item.de.localeCompare(b.item.de));
 else if(sort==="mastered") list.sort((a,b)=>(b.item.mastered?1:0)-(a.item.mastered?1:0));
@@ -1902,53 +2152,65 @@ else if(sort==="memoryDesc") list.sort((a,b)=>(b.item.memoryLevel||0)-(a.item.me
 else if(sort==="memoryAsc") list.sort((a,b)=>(a.item.memoryLevel||0)-(b.item.memoryLevel||0));
 else if(sort==="streakDesc") list.sort((a,b)=>(b.item.correctStreak||0)-(a.item.correctStreak||0));
 else if(sort==="streakAsc") list.sort((a,b)=>(a.item.correctStreak||0)-(b.item.correctStreak||0));
+else if(sort==="stabilityDesc") list.sort((a,b)=>(b.item.stabilityScore||0)-(a.item.stabilityScore||0));
+else if(sort==="stabilityAsc") list.sort((a,b)=>(a.item.stabilityScore||0)-(b.item.stabilityScore||0));
 else if(sort==="dueFirst") list.sort((a,b)=>{
-  const ad=isDueForReview(a.item) && (a.item.mastered || a.item.studyState==="mastered" || (a.item.learningState||"auto")==="mastered");
-  const bd=isDueForReview(b.item) && (b.item.mastered || b.item.studyState==="mastered" || (b.item.learningState||"auto")==="mastered");
+  const ad=calculatedWordState(a.item)==="Revisão vencida";
+  const bd=calculatedWordState(b.item)==="Revisão vencida";
   if(ad!==bd) return bd-ad;
   return (a.item.nextReviewAt||Infinity)-(b.item.nextReviewAt||Infinity);
 });
 else if(sort==="reviewOldest") list.sort((a,b)=>(a.item.nextReviewAt||Infinity)-(b.item.nextReviewAt||Infinity));
 else list.sort((a,b)=>(b.item.createdAt||0)-(a.item.createdAt||0));
 
+const showMem=$("showDbMemory") ? $("showDbMemory").checked : true;
+const showStreak=$("showDbStreak") ? $("showDbStreak").checked : true;
+const showStab=$("showDbStability") ? $("showDbStability").checked : false;
+const showNext=$("showDbNextReview") ? $("showDbNextReview").checked : false;
+
+function dbMetrics(w){
+ const bits=[];
+ if(showMem) bits.push(`Memory ${Math.round(w.memoryLevel||0)}%`);
+ if(showStreak) bits.push(`Streak ${w.correctStreak||0}`);
+ if(showStab) bits.push(`Stability ${Math.round(w.stabilityScore||0)}%`);
+ if(showNext) bits.push(`Rev. ${w.nextReviewAt ? new Date(w.nextReviewAt).toLocaleDateString() : "—"}`);
+ bits.push(calculatedWordState(w));
+ bits.push(cardTypeLabel(w));
+ return bits.join(" · ");
+}
+
 const avgMemory = vocabulary.length ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/vocabulary.length) : 0;
-const dueNow = vocabulary.filter(w=>isDueForReview(w) && (w.mastered || w.studyState==="mastered")).length;
+const dueNow = vocabulary.filter(w=>calculatedWordState(w)==="Revisão vencida").length;
 const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
 
-$("dbCount").textContent=`${list.length} de ${vocabulary.length} palavras · ${activeVocabulary().length} em aprendizagem · ${vocabulary.filter(x=>x.mastered).length} em revisão ocasional · Memory média ${avgMemory}% · ${dueNow} revisões vencidas · ${criticalNow} críticas`;
+$("dbCount").textContent=`${list.length} de ${vocabulary.length} itens · ${activeVocabulary().length} em aprendizagem · ${vocabulary.filter(x=>x.mastered).length} dominadas · Memory média ${avgMemory}% · ${dueNow} revisões vencidas · ${criticalNow} críticas`;
 
 if(!list.length){$("wordList").innerHTML="<p class='small'>Sem resultados.</p>";return}
 $("wordList").innerHTML="";
 list.forEach(({item,index})=>{
 const div=document.createElement("div");
 div.className="item";
-const stateLabel =
-item.learningState==="suspended" ? "Suspensa" :
-item.learningState==="focus" ? "Foco ativo" :
-item.learningState==="mastered" || item.mastered ? "Dominada manual" :
-"Automático";
-div.innerHTML=`<div class="item-title">${item.pt} → ${formatGerman(item.de)}</div>
+const stateLabel=calculatedWordState(item);
+div.innerHTML=`<div class="item-title">${escapeHTML(item.pt)} → ${formatGerman(item.de)}</div>
 <div>
 <span class="pill">${stateLabel}</span>
-<span class="pill">Memory ${Math.round(item.memoryLevel||0)}%</span>
-<span class="pill">Stability ${Math.round(item.stabilityScore||0)}%</span>
-<span class="pill">XP ${Math.round(item.xp||0)}</span>
-<span class="pill">Acertos ${item.successCount||0}</span>
-<span class="pill">Erros ${item.failCount||0}</span>
-${item.difficultyBoost&&!item.mastered?'<span class="pill" style="background:#fee2e2;color:#991b1b">Palavra difícil</span>':''}
+<span class="pill">${cardTypeLabel(item)}</span>
 </div>
+<div class="small">${dbMetrics(item)}</div>
 <div>
 <span class="pill">Erro memória ${Number(item.errorStats?.memory||0)}</span>
 <span class="pill">Artigos ${Number(item.errorStats?.article||0)}</span>
 <span class="pill">Gramática ${Number(item.errorStats?.grammar||0)}</span>
 <span class="pill">Próxima revisão ${item.nextReviewAt?new Date(item.nextReviewAt).toLocaleDateString():"—"}</span>
 </div>
-${item.synonyms?.length?`<div>${item.synonyms.map(s=>`<span class="pill">${s}</span>`).join("")}</div>`:""}
-${item.sentence?`<div class="small">${item.sentence}</div>`:""}
-<div class="actions"><button class="secondary" data-edit="${index}">Editar</button><button class="danger" data-del="${index}">Apagar</button></div>`;
+${item.synonyms?.length?`<div>${item.synonyms.map(s=>`<span class="pill">${escapeHTML(s)}</span>`).join("")}</div>`:""}
+${item.sentence?`<div class="small">${escapeHTML(item.sentence)}</div>`:""}
+<div class="actions">${shouldShowInspector()?`<button class="secondary" data-inspect="${index}">ℹ️</button>`:""}<button class="secondary" data-edit="${index}">Editar</button><button class="danger" data-del="${index}">Apagar</button></div>`;
 $("wordList").appendChild(div)
 });
-document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editWord(Number(b.dataset.edit)));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteWord(Number(b.dataset.del)));
+document.querySelectorAll("[data-inspect]").forEach(b=>b.onclick=()=>openWordInspector(Number(b.dataset.inspect)));
+document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editWord(Number(b.dataset.edit)));
+document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteWord(Number(b.dataset.del)));
 }
 
 function getSeparator(){return $("separator").value==="tab"?"\t":$("separator").value}
@@ -2167,6 +2429,12 @@ $("saveBtn").onclick=saveWord;$("resetLearningBtn").onclick=resetLearningForCurr
 $("fileInput").onchange=loadImportFile;$("jsonInput").onchange=importJsonBackup;$("importBtn").onclick=importBulkText;$("templateBtn").onclick=downloadTemplate;$("exportCsvBtn").onclick=exportCsv;$("exportJsonBtn").onclick=exportJson;$("backupJsonBtn").onclick=createBackupJson;$("backupCsvBtn").onclick=createBackupCsv;
 ["ptWord","deWord","synonyms"].forEach(id=>$(id).addEventListener("input",renderDuplicateWarning));
 $("searchBox").oninput=renderWordList;$("sortMode").onchange=renderWordList;
+
+["dbFilterMode","showDbMemory","showDbStreak","showDbStability","showDbNextReview","showWordInspector"].forEach(id=>{
+ const el=$(id);
+ if(el) el.addEventListener("change",renderWordList);
+});
+
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
 
 function normalizeMasteredMemory(){
