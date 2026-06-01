@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.7.1.2</title>
+<title>Deutsch Trainer V10.7.1.2f</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
 :root{--blue:#1f6feb;--green:#16a34a;--red:#dc2626;--yellow:#f59e0b;--bg:#f4f4f4;--card:#fff;--text:#222;--muted:#666}
 *{box-sizing:border-box}body{font-family:Arial,sans-serif;background:var(--bg);margin:0;color:var(--text)}.container{max-width:920px;margin:auto;padding:14px}
 header{position:sticky;top:0;background:rgba(244,244,244,.96);backdrop-filter:blur(8px);z-index:10;padding:10px 0;border-bottom:1px solid #ddd}
-h1{font-size:28px;text-align:center;margin:8px 0 12px}.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+h1{font-size:28px;text-align:center;margin:8px 0 12px}.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .tab{background:#e5e7eb;color:#111;border:0;border-radius:12px;padding:12px;font-weight:bold}.tab.active{background:var(--blue);color:#fff}
 .box{background:var(--card);padding:18px;margin:16px 0;border-radius:16px;box-shadow:0 2px 8px #0001}h2{text-align:center;margin-top:0}
 label{display:block;margin-top:12px;font-weight:bold}input,textarea,select{width:100%;padding:12px;margin-top:6px;border-radius:10px;border:1px solid #ccc;font-size:16px}
@@ -23,9 +23,31 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 .progressBox{text-align:center;margin:10px 0 14px}
 .progressDots{font-size:22px;letter-spacing:3px;margin:4px 0}
 .dot{color:#d1d5db}.dot.on.low{color:#dc2626}.dot.on.mid{color:#f59e0b}.dot.on.high{color:#1f6feb}.dot.on.done{color:#16a34a}
-.progressText{font-size:14px;color:#555}.hardBadge{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px;font-size:13px;margin-left:4px}.voiceOk{color:#166534;font-weight:bold}.voiceBad{color:#991b1b;font-weight:bold}.voiceListening{color:#1f6feb;font-weight:bold}.micRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.micOn{background:#16a34a!important;color:white}
+.progressText{font-size:14px;color:#555}.hardBadge{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px;font-size:13px;margin-left:4px}.voiceOk{color:#166534;font-weight:bold}.voiceBad{color:#991b1b;font-weight:bold}.voiceListening{color:#1f6feb;font-weight:bold}.micOn{background:#16a34a!important;color:white}
+.micControlRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.micStatusDot{display:inline-block;width:18px;height:18px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 1px #ccc}
+.micStatusDot.off{background:#dc2626}
+.micStatusDot.preparing{background:#f59e0b}
+.micStatusDot.listening{background:#16a34a}
+.micStatusText{font-size:14px;color:#555}
 .article{font-weight:700;border-radius:8px;padding:2px 6px;margin-right:4px}.article-der{background:#dbeafe;color:#1e40af}.article-die{background:#fee2e2;color:#991b1b}.article-das{background:#dcfce7;color:#166534}.item{padding:12px;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.item-title{font-weight:bold;font-size:18px}.pill{display:inline-block;background:#eef2ff;border-radius:999px;padding:4px 8px;margin:3px;font-size:13px;color:#333}.mastered{background:#dcfce7;color:#166534}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{margin-top:8px}.dup-list{font-size:14px;margin-top:8px}.dup-list li{margin:5px 0}
 @media(max-width:700px){.container{padding:10px}h1{font-size:25px}.card{font-size:30px;min-height:200px}button{width:100%;margin-top:8px}.grid2{grid-template-columns:1fr}.tabs{gap:5px}.tab{font-size:14px;padding:10px 6px}}
+
+.config-section{border:1px solid #e5e7eb;border-radius:14px;margin:12px 0;background:#fff}
+.config-section summary{padding:14px 16px;cursor:pointer;font-size:18px}
+.config-section .section-body{padding:0 16px 16px}
+.range-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end;margin:10px 0 16px}
+.range-row select{margin-top:4px}
+.range-sep{font-weight:bold;padding-bottom:12px;color:#555}
+.config-note{background:#f8fafc;border-radius:10px;padding:10px;margin:10px 0}
+</style>
+<style id="v1071-ux-css">
+.db-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.db-toolbar select{width:100%}
+.compact-details{margin:8px 0;padding:8px 10px;border:1px solid #ddd;border-radius:12px;background:#fafafa}
+.compact-details summary{font-weight:700;cursor:pointer}
+#sessionProgressInfo{font-size:.95rem;line-height:1.35;margin:4px 0 8px}
+#roundDetails{font-size:.9rem;line-height:1.45}
 </style>
 </head>
 <body>
@@ -34,6 +56,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <h1>Deutsch Trainer V10.7.1.2</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
+<button class="tab" data-page="statsPage">Estatísticas</button>
 <button class="tab" data-page="add">Adicionar</button>
 <button class="tab" data-page="db">Base de dados</button>
 <button class="tab" data-page="config">Configuração</button>
@@ -44,12 +67,14 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <div class="box">
 <h2>Treino</h2>
 <div class="stats hidden" id="stats">0 palavras guardadas</div>
+<div id="sessionProgressInfo" class="small" style="margin:8px 0;text-align:center;color:#475569">0 respondidas · ~0 restantes</div>
 <div id="card" class="card">Adiciona palavras para começar</div>
 <div id="progressBox" class="progressBox"></div>
 <div id="voiceResult" class="small" style="text-align:center;margin:8px 0"></div>
-<div class="micRow">
+<div class="micControlRow">
 <button class="primary" id="micBtn">🎤 Ligar microfone</button>
-<button class="secondary" id="stopMicBtn">Desligar microfone</button>
+<span id="micStatusDot" class="micStatusDot off"></span>
+<span id="micStatusText" class="micStatusText">desligado</span>
 </div>
 <div id="answerArea" class="hidden">
 <div id="synonymButtons"></div>
@@ -63,10 +88,19 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 Esquerda = acertei/já sei · direita = falhei · toque = revelar/esconder resposta
 </p>
 <p class="small" style="text-align:center;margin:0">
-Usa o microfone para responder em alemão ou revela a carta para escolher manualmente.
+Usa o microfone para cada resposta, ou ativa o modo automático nas configurações.
 </p>
 </div>
 
+</div>
+
+</section>
+
+
+<section id="page-statsPage" class="hidden">
+<div class="box">
+<h2>Estatísticas</h2>
+<div id="statsPageContent"></div>
 </div>
 </section>
 
@@ -78,10 +112,23 @@ Usa o microfone para responder em alemão ou revela a carta para escolher manual
 <label>Resposta em alemão</label><input id="deWord" placeholder="ex: das Haus">
 <label>Sinónimos / respostas aceites</label><input id="synonyms" placeholder="ex: Haus, Zuhause">
 <label>Frase exemplo em alemão</label><textarea id="sentence" rows="2" placeholder="ex: Ich gehe nach Hause."></textarea>
-<label><input type="checkbox" id="masteredCheck"> Palavra dominada / não mostrar no treino</label>
-<p class="small">Ao acertares 7 vezes consecutivas, esta opção é ativada automaticamente. Podes desmarcar manualmente para a palavra voltar ao treino.</p>
+
+<label>Estado de aprendizagem</label>
+<select id="learningState">
+  <option value="auto">Automático (recomendado)</option>
+  <option value="focus">Foco ativo</option>
+  <option value="mastered">Dominada manual</option>
+  <option value="suspended">Suspensa</option>
+</select>
+<p class="small">
+Automático = o sistema gere revisões e frequência automaticamente.
+Foco ativo = prioridade temporária.
+Dominada manual = revisão ocasional.
+Suspensa = removida do treino.
+</p>
 <div id="duplicateNotice"></div>
 <button class="primary" id="saveBtn">Guardar palavra</button>
+<button class="secondary" id="resetLearningBtn">Resetar aprendizagem desta palavra</button>
 <button class="secondary" id="cancelEditBtn">Cancelar edição</button>
 <div id="saveNotice"></div>
 </div>
@@ -110,12 +157,38 @@ Usa o microfone para responder em alemão ou revela a carta para escolher manual
 <h2>Base de dados</h2>
 <div class="grid2">
 <input id="searchBox" placeholder="Pesquisar português, alemão ou sinónimos">
+
+<div class="db-toolbar"><select id="dbFilterMode">
+<option value="all">Todas</option>
+<option value="words">Palavras</option>
+<option value="phrases">Frases</option>
+<option value="new">Novas</option>
+<option value="learning">Aprendizagem</option>
+<option value="critical">Zona crítica</option>
+<option value="confirmation">Confirmação</option>
+<option value="mastered">Dominadas</option>
+<option value="due">Revisão vencida</option>
+</select>
+
+<details class="compact-details"><summary>⚙️ Opções de visualização</summary><label class="small"><input type="checkbox" id="showDbMemory" checked> Memory</label>
+<label class="small"><input type="checkbox" id="showDbStreak" checked> Streak</label>
+<label class="small"><input type="checkbox" id="showDbStability"> Stability</label>
+<label class="small"><input type="checkbox" id="showDbNextReview"> Próx. revisão</label></details>
+
 <select id="sortMode">
 <option value="recent">Mais recentes primeiro</option>
 <option value="pt">Ordenar por português</option>
 <option value="de">Ordenar por alemão</option>
 <option value="mastered">Mostrar dominadas primeiro</option>
-</select>
+<option value="memoryDesc">Memory: maior primeiro</option>
+<option value="memoryAsc">Memory: menor primeiro</option>
+<option value="streakDesc">Streak: maior primeiro</option>
+<option value="streakAsc">Streak: menor primeiro</option>
+<option value="stabilityDesc">Stability: maior primeiro</option>
+<option value="stabilityAsc">Stability: menor primeiro</option>
+<option value="dueFirst">Revisões vencidas primeiro</option>
+<option value="reviewOldest">Próxima revisão mais antiga</option>
+</select></div>
 </div>
 <div class="actions">
 <button class="secondary" id="exportCsvBtn">Exportar CSV</button>
@@ -130,43 +203,154 @@ Usa o microfone para responder em alemão ou revela a carta para escolher manual
 <section id="page-config" class="hidden">
 <div class="box">
 <h2>Configuração</h2>
+<p class="small">As secções estão recolhidas por defeito para reduzir o scroll. Abre apenas o grupo que queres ajustar.</p>
 
+<details class="config-section">
+<summary><b>Áudio e reconhecimento</b></summary>
+<div class="section-body">
+<h3>Áudio e leitura</h3>
 <label><input type="checkbox" id="speechEnabled" checked> Falar automaticamente a resposta alemã</label>
-<label><input type="checkbox" id="speakArticle" checked> Incluir artigo na pronúncia alemã</label>
+<label><input type="checkbox" id="speakArticle" checked> Incluir artigo na voz alemã</label>
 <label><input type="checkbox" id="speakPortuguese" checked> Ler palavra portuguesa automaticamente</label>
-<label><input type="checkbox" id="autoSpeech" checked> Reprodução automática</label>
 
-<hr style="border:0;border-top:1px solid #eee;margin:18px 0">
-
+<h3>Reconhecimento de voz</h3>
 <label><input type="checkbox" id="voiceEnabled" checked> Ativar reconhecimento de voz</label>
-<label><input type="checkbox" id="requireArticle"> Exigir artigo no reconhecimento</label>
-<p class="small">
-Se “exigir artigo” estiver desligado, a app aceita tanto <strong>Haus</strong> como <strong>das Haus</strong>.
-Se estiver ligado, tens de dizer o artigo quando a resposta guardada tiver artigo.
-</p>
-
-<label>Sensibilidade da comparação</label>
-
-<label><input type="checkbox" id="voiceDebug" checked> Mostrar debug de reconhecimento</label>
-<select id="voiceStrictness">
-<option value="normal">Normal</option>
-<option value="strict">Mais rigorosa</option>
-<option value="loose">Mais permissiva</option>
+<label><input type="checkbox" id="strictGrammarRecognition" checked> Exigir gramática correta nas frases</label>
+<p class="small">Afeta frases: preposições/pronomes/casos. Os artigos são controlados separadamente abaixo.</p>
+<label><input type="checkbox" id="autoMicEnabled" checked> Modo automático do microfone</label>
+<label><input type="checkbox" id="waitForPortugueseBeforeMic" checked> Esperar a voz portuguesa terminar antes de ouvir</label>
+<label>Duração extra após a voz portuguesa</label>
+<select id="autoMicDelay">
+<option value="0" selected>0 segundos</option><option value="2000">2 segundos</option><option value="3000">3 segundos</option><option value="5000">5 segundos</option><option value="7000">7 segundos</option>
 </select>
+<label>Parar modo automático após silêncio contínuo</label>
+<select id="autoMicMaxSilentMinutes">
+<option value="1">1 minuto</option><option value="2">2 minutos</option><option value="5" selected>5 minutos</option><option value="10">10 minutos</option>
+</select>
+<p class="small">Se a espera estiver ativa, o microfone só liga depois da voz portuguesa terminar + tempo extra.</p>
 
+<h3>Artigos e gramática</h3>
+<label><input type="checkbox" id="requireArticle" checked> Exigir artigo no reconhecimento</label>
+<p class="small">Se “exigir artigo” estiver desligado, a app aceita tanto <strong>Haus</strong> como <strong>das Haus</strong>.</p>
+
+<h3>Sensibilidade e debug</h3>
+<label>Sensibilidade da comparação</label>
+<select id="voiceStrictness"><option value="normal">Normal</option><option value="strict">Mais rigorosa</option><option value="loose">Mais permissiva</option></select>
 <p class="small">Nota: o reconhecimento de voz depende do browser. Funciona melhor em Chrome/Edge. No iPhone/Safari pode ser limitado.</p>
+</div>
+</details>
 
-<hr style="border:0;border-top:1px solid #eee;margin:18px 0">
+<details class="config-section">
+<summary><b>Regras da ronda</b></summary>
+<div class="section-body">
+<label>Máximo de palavras novas por sessão</label>
+<select id="maxNewWords"><option value="3">3</option><option value="5" selected>5</option><option value="8">8</option><option value="10">10</option></select>
+<label>Limite absoluto de cartas por ronda</label>
+<select id="maxCardsPerSession"><option value="20">20</option><option value="30">30</option><option value="40" selected>40</option><option value="50">50</option><option value="60">60</option></select>
+<p class="small">O limite absoluto é apenas um travão de segurança.</p>
+<label>Mínimo de revisões por ronda</label>
+<select id="minReviewsPerSession"><option value="0">0</option><option value="3">3</option><option value="5" selected>5</option><option value="8">8</option></select>
+<label>Terminar ronda quando excluídas >=</label>
+<select id="sessionExcludedThreshold"><option value="40">40%</option><option value="50" selected>50%</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option></select>
+<label>Palavras distintas principais por ronda</label>
+<select id="targetDistinctWords"><option value="8">8</option><option value="10">10</option><option value="12" selected>12</option><option value="15">15</option><option value="20">20</option></select>
 
-<h2>Backup individual</h2>
-<p class="small">
-A app não consegue escolher sozinha uma pasta fixa do iCloud nem substituir automaticamente um ficheiro, por segurança do browser.
-Mas podes exportar um backup JSON e guardá-lo manualmente em iCloud Drive, OneDrive ou no iPhone.
-</p>
+<label>Mínimo de frases por ronda</label>
+<select id="minPhrasesPerSession">
+<option value="0">0</option>
+<option value="1" selected>1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+</select>
+<p class="small">Se existirem frases reais elegíveis, a ronda tenta incluir pelo menos este número sem substituir críticas, confirmações nem revisões.</p>
+
+<p class="small">A ronda termina quando a percentagem de palavras excluídas atinge o objetivo e as revisões disponíveis foram feitas.</p>
+</div>
+</details>
+
+<details class="config-section">
+<summary><b>Domínio e revisão</b></summary>
+<div class="section-body">
+<label>Exposições mínimas antes de dominar palavra nova</label>
+<select id="minExposuresToMaster"><option value="3">3</option><option value="5" selected>5</option><option value="7">7</option></select>
+<label>Acertos consecutivos mínimos para dominar</label>
+<select id="minStreakToMaster"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
+<label>Nível necessário para dominar</label>
+<input id="masterThreshold" type="number" value="85">
+<label>Memória mínima</label>
+<select id="minMemoryLevel"><option value="-30">-30</option><option value="-40">-40</option><option value="-50" selected>-50</option><option value="-60">-60</option></select>
+<label>Limiar da zona crítica</label>
+<select id="criticalThreshold"><option value="-10">-10</option><option value="0" selected>0</option><option value="10">10</option></select>
+<label><input type="checkbox" id="repeatCriticalWords" checked> Repetir consecutivamente palavras em zona crítica</label>
+<label>Intervalo inicial após dominar</label>
+<select id="initialReviewDays"><option value="1" selected>1 dia</option><option value="2">2 dias</option><option value="3">3 dias</option><option value="7">7 dias</option></select>
+<label>Modo adaptativo de revisões</label>
+<label><input type="checkbox" id="adaptiveScheduler" checked> Ajustar intervalos pela dificuldade e estabilidade</label>
+<label>Multiplicador de revisão ao acertar</label>
+<select id="reviewGrowthFactor"><option value="1.5">1.5x</option><option value="2" selected>2x</option><option value="2.5">2.5x</option></select>
+</div>
+</details>
+
+<details class="config-section">
+<summary><b>Espaçamento dentro da ronda</b></summary>
+<div class="section-body">
+<label>Modo de espaçamento dentro da ronda</label>
+<select id="repeatSpacingMode"><option value="smart" selected>Inteligente: Memory + streak</option><option value="compact">Mais compacto</option><option value="wide">Mais espaçado</option></select>
+<p class="small config-note">O sistema escolhe automaticamente um destes intervalos com base na Memory e na streak histórica da palavra.</p>
+
+<label>Repetição rápida</label>
+<div class="range-row"><div><span class="small">mín.</span><select id="spacingLowMin"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></div><div class="range-sep">;</div><div><span class="small">máx.</span><select id="spacingLowMax"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select></div></div>
+<label>Repetição normal</label>
+<div class="range-row"><div><span class="small">mín.</span><select id="spacingMidMin"><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option></select></div><div class="range-sep">;</div><div><span class="small">máx.</span><select id="spacingMidMax"><option value="6">6</option><option value="7" selected>7</option><option value="8">8</option></select></div></div>
+<label>Repetição espaçada</label>
+<div class="range-row"><div><span class="small">mín.</span><select id="spacingHighMin"><option value="7">7</option><option value="8" selected>8</option><option value="10">10</option></select></div><div class="range-sep">;</div><div><span class="small">máx.</span><select id="spacingHighMax"><option value="10">10</option><option value="12" selected>12</option><option value="15">15</option></select></div></div>
+<label>Repetição muito espaçada</label>
+<div class="range-row"><div><span class="small">mín.</span><select id="spacingVeryHighMin"><option value="10">10</option><option value="13" selected>13</option><option value="15">15</option></select></div><div class="range-sep">;</div><div><span class="small">máx.</span><select id="spacingVeryHighMax"><option value="18">18</option><option value="20" selected>20</option><option value="25">25</option></select></div></div>
+<label>Distância mínima entre repetições</label>
+<select id="minRepeatDistance"><option value="1">1 cartão</option><option value="2">2 cartões</option><option value="3" selected>3 cartões</option><option value="5">5 cartões</option></select>
+</div>
+</details>
+
+<details class="config-section">
+<summary><b>Ferramentas de análise</b></summary>
+<label><input type="checkbox" id="voiceDebug"> Modo Debug</label>
+<p class="small">Mostra detalhes técnicos da ronda e do microfone.</p>
+<label><input type="checkbox" id="showWordInspector"> Inspector da Palavra</label>
+<p class="small">Mostra o botão ℹ️ na base de dados para auditar estado, revisão e decisões do scheduler.</p>
+</details>
+
+<details class="config-section">
+<summary><b>Backup</b></summary>
+<div class="section-body">
+<p class="small">Exporta um backup JSON e guarda-o manualmente em iCloud Drive, OneDrive ou no iPhone.</p>
 <button class="primary" id="backupJsonBtn">Criar backup JSON agora</button>
 <button class="secondary" id="backupCsvBtn">Criar backup CSV agora</button>
 <p class="small" id="lastBackupInfo"></p>
 <label><input type="checkbox" id="backupReminder" checked> Mostrar lembrete quando houver muitas alterações sem backup</label>
+</div>
+</details>
+
+<details class="config-section">
+<summary><b>Avançado: Memory / Stability / XP</b></summary>
+<div class="section-body">
+<p class="small"><b>Memory</b> = recordação imediata · <b>Stability</b> = retenção consolidada · <b>XP</b> = esforço cognitivo acumulado.</p>
+<label>Memory: acerto normal</label><input id="memoryCorrect" type="number" value="10">
+<label>Memory: erro de artigo</label><input id="memoryArticleError" type="number" value="-8">
+<label>Memory: erro gramatical</label><input id="memoryGrammarError" type="number" value="-15">
+<label>Memory: erro de memória / skip</label><input id="memoryMemoryError" type="number" value="-25">
+<label>Stability: acerto normal</label><input id="stabilityCorrect" type="number" value="4">
+<label>Stability: acerto revisão vencida</label><input id="stabilityDueCorrect" type="number" value="10">
+<label>Stability: erro de artigo</label><input id="stabilityArticleError" type="number" value="-3">
+<label>Stability: erro gramatical</label><input id="stabilityGrammarError" type="number" value="-6">
+<label>Stability: erro de memória</label><input id="stabilityMemoryError" type="number" value="-12">
+<label>XP: acerto normal</label><input id="xpCorrect" type="number" value="10">
+<label>XP: acerto revisão vencida</label><input id="xpDueCorrect" type="number" value="20">
+<label>XP: erro de artigo</label><input id="xpArticleError" type="number" value="4">
+<label>XP: erro gramatical</label><input id="xpGrammarError" type="number" value="3">
+<label>XP: erro de memória</label><input id="xpMemoryError" type="number" value="1">
+<label>XP: skip/swipe direita</label><input id="xpSkip" type="number" value="0">
+</div>
+</details>
 </div>
 </section>
 </div>
@@ -174,13 +358,28 @@ Mas podes exportar um backup JSON e guardá-lo manualmente em iCloud Drive, OneD
 <script>
 const STORAGE_KEY="vocabularyGermanTrainer_v5"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
-let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;
-let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
+let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;let sessionWords=new Set(),sessionPlannedWords=new Set(),sessionDoneWords=new Set(),sessionReviewCount=0,sessionPlannedReviews=0,sessionDueReviewsTotal=0,sessionRoundStreak={},sessionLastCorrect={};let sessionStartedAt=Date.now(),sessionInitialSnapshot={};window.sessionCardCounter=0;let sessionMasteredRemembered=0,sessionMasteredForgotten=0,sessionRecoveredConfirmations=0,sessionFailedConfirmations=0;
+let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let micMasterOn=false;let autoMicTimer=null;let autoMicRetryTimer=null;let appIsSpeaking=false;let appSpeechCooldownUntil=0;let autoMicSilentStartedAt=0;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
 
 function $(id){return document.getElementById(id)}
 function normalize(t){return (t||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 function showNotice(target,msg,type="ok"){const b=$(target);b.className="notice "+type;b.innerHTML=msg;setTimeout(()=>{b.className="";b.innerHTML=""},4000)}
-function loadVocabulary(){try{vocabulary=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]")}catch(e){vocabulary=[]}vocabulary.forEach(x=>{if(x.correctStreak===undefined)x.correctStreak=0;if(x.wrongStreak===undefined)x.wrongStreak=0;if(x.difficultyBoost===undefined)x.difficultyBoost=false;if(x.mastered===undefined)x.mastered=false})}
+function loadVocabulary(){try{vocabulary=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]")}catch(e){vocabulary=[]}vocabulary.forEach(x=>{if(x.correctStreak===undefined)x.correctStreak=0;if(x.wrongStreak===undefined)x.wrongStreak=0;if(x.difficultyBoost===undefined)x.difficultyBoost=false;if(x.mastered===undefined)x.mastered=false;
+if(x.memoryLevel===undefined)x.memoryLevel=0;
+if(x.studyState===undefined)x.studyState="new";
+if(x.successCount===undefined)x.successCount=0;
+if(x.failCount===undefined)x.failCount=0;
+if(x.seenCount===undefined)x.seenCount=0;
+if(x.nextReviewAt===undefined)x.nextReviewAt=0;
+if(x.lastReviewedAt===undefined)x.lastReviewedAt=0;
+if(x.reviewIntervalDays===undefined)x.reviewIntervalDays=0;
+if(x.sessionDueAt===undefined)x.sessionDueAt=0;
+if(x.stabilityScore===undefined)x.stabilityScore=0;
+if(x.xp===undefined)x.xp=0;
+if(x.learningState===undefined)x.learningState = x.mastered ? "mastered" : "auto";
+if(x.totalReviews===undefined)x.totalReviews=0;
+if(x.lastSessionSeen===undefined)x.lastSessionSeen=0;
+if(x.errorStats===undefined)x.errorStats={memory:0,article:0,grammar:0}})}
 function saveVocabulary(){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
   changesSinceBackup++;
@@ -190,7 +389,14 @@ function saveVocabulary(){
 function parseSynonyms(t){return t?t.split(",").map(s=>s.trim()).filter(Boolean):[]}
 function getAllAnswers(c){const a=[c.de,...(c.synonyms||[])],u=[];for(const x of a)if(x&&!u.some(y=>normalize(y)===normalize(x)))u.push(x);return u}
 function allGermanTerms(c){return getAllAnswers(c).map(normalize)}
-function activeVocabulary(){return vocabulary.filter(x=>!x.mastered)}
+function activeVocabulary(){
+return vocabulary.filter(x => (x.learningState||"auto") !== "suspended" && (x.learningState||"auto") !== "mastered" && !x.mastered);
+}
+
+function reviewVocabulary(){
+return vocabulary.filter(x => (x.learningState||"auto") !== "suspended");
+}
+
 
 function cleanGermanForSpeech(text){
   const value = (text || "").trim();
@@ -213,32 +419,69 @@ function formatGerman(text){
   return `<span class="article article-${article}">${article}</span>${escapeHtml(rest)}`;
 }
 
+
+function markAppSpeechStart(){
+  appIsSpeaking = true;
+  appSpeechCooldownUntil = Date.now() + 1500;
+}
+
+function markAppSpeechEnd(){
+  appIsSpeaking = false;
+  appSpeechCooldownUntil = Date.now() + 1500;
+}
+
+function appAudioActive(){
+  return appIsSpeaking ||
+         Date.now() < appSpeechCooldownUntil ||
+         (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending));
+}
+
+function pauseRecognitionForAppSpeech(){
+  if(recognition && isListening){
+    try { recognition.stop(); } catch(e) {}
+  }
+  isListening = false;
+  if(micMasterOn && isAutoMicMode()){
+    setMicStatus("preparing", "preparação");
+  }
+}
+
 function speakGerman(text){
   if(!$("speechEnabled") || !$("speechEnabled").checked) return;
   if(!("speechSynthesis" in window)) return;
+  pauseRecognitionForAppSpeech();
   const utterance = new SpeechSynthesisUtterance(cleanGermanForSpeech(text));
   utterance.lang = "de-DE";
   utterance.rate = 0.85;
   utterance.pitch = 1;
+  utterance.onstart = markAppSpeechStart;
+  utterance.onend = markAppSpeechEnd;
+  utterance.onerror = markAppSpeechEnd;
   window.speechSynthesis.cancel();
+  markAppSpeechStart();
   window.speechSynthesis.speak(utterance);
 }
 
 function speakPortuguese(text){
   if(!$("speakPortuguese") || !$("speakPortuguese").checked) return;
-  if(!$("autoSpeech") || !$("autoSpeech").checked) return;
   if(!("speechSynthesis" in window)) return;
+
+  pauseRecognitionForAppSpeech();
 
   const utterance = new SpeechSynthesisUtterance(text || "");
   utterance.lang = "pt-PT";
   utterance.rate = 0.82;
   utterance.pitch = 1;
+  utterance.onstart = markAppSpeechStart;
+  utterance.onend = markAppSpeechEnd;
+  utterance.onerror = markAppSpeechEnd;
 
   // Pausa maior para não cortar a resposta alemã anterior.
   // Não usamos cancel() aqui, porque isso interrompia a voz alemã.
+  markAppSpeechStart();
   setTimeout(() => {
     if(window.speechSynthesis.speaking){
-      setTimeout(() => window.speechSynthesis.speak(utterance), 900);
+      setTimeout(() => window.speechSynthesis.speak(utterance), 1200);
     } else {
       window.speechSynthesis.speak(utterance);
     }
@@ -286,11 +529,150 @@ function isCloseEnough(spoken, expected){
   return maxLen >= 5 && dist <= threshold;
 }
 
+
+const GERMAN_ARTICLES = ["der","die","das","den","dem","des","ein","eine","einen","einem","einer"];
+const CRITICAL_WORDS = [
+  "für","mit","zu","auf","an","in","bei","nach","von","über","unter","vor","aus","um","gegen",
+  "dich","dir","mich","mir","ihn","ihm","sie","ihnen","uns","euch","sich",
+  "ich","du","er","es","wir","ihr"
+];
+
+function tokenizeGerman(text){
+  return normalizeVoice(text)
+    .replace(/[“”„"]/g,"")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function removeOptionalArticles(tokens){
+  if($("requireArticle") && $("requireArticle").checked) return tokens;
+  return tokens.filter(t => !GERMAN_ARTICLES.includes(t));
+}
+
+function isSentenceLike(text){
+  return tokenizeGerman(text).length >= 3;
+}
+
+function criticalSequence(tokens){
+  return tokens.filter(t => CRITICAL_WORDS.includes(t));
+}
+
+function hasStrictGrammarMismatch(spoken, expected){
+  // Esta opção controla APENAS regras gramaticais em frases.
+  // Se estiver desligada, frases ficam mais permissivas.
+  if(!$("strictGrammarRecognition") || !$("strictGrammarRecognition").checked) return false;
+
+  const spokenTokens = removeOptionalArticles(tokenizeGerman(spoken));
+  const expectedTokens = removeOptionalArticles(tokenizeGerman(expected));
+
+  // Só aplicamos esta regra forte a frases/expressões, não a palavras isoladas.
+  if(expectedTokens.length < 3) return false;
+
+  const spokenCritical = criticalSequence(spokenTokens).join("|");
+  const expectedCritical = criticalSequence(expectedTokens).join("|");
+
+  if(spokenCritical !== expectedCritical) return true;
+
+  const minLen = Math.min(spokenTokens.length, expectedTokens.length);
+
+  for(let i=0;i<minLen;i++){
+    const s = spokenTokens[i];
+    const e = expectedTokens[i];
+
+    if(s === e) continue;
+
+    // Com gramática rigorosa ON, preposições/pronomes/palavras curtas críticas falham.
+    const criticalMismatch =
+      CRITICAL_WORDS.includes(s) ||
+      CRITICAL_WORDS.includes(e);
+
+    if(criticalMismatch) return true;
+
+    if((s.length <= 3 || e.length <= 3) && s !== e){
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function smartSimilarity(spoken, expected){
+  const s = removeOptionalArticles(tokenizeGerman(spoken));
+  const e = removeOptionalArticles(tokenizeGerman(expected));
+
+  const spokenNorm = s.join(" ");
+  const expectedNorm = e.join(" ");
+
+  if(spokenNorm === expectedNorm) return 1;
+
+  if(!s.length || !e.length) return 0;
+
+  let same = 0;
+  for(const token of s){
+    if(e.includes(token)) same++;
+  }
+
+  return same / Math.max(s.length, e.length);
+}
+
+
+function firstToken(text){
+  const tokens = tokenizeGerman(text);
+  return tokens.length ? tokens[0] : "";
+}
+
+function hasRequiredArticleMismatch(spoken, expected){
+  if(!$("requireArticle") || !$("requireArticle").checked) return false;
+
+  const expectedArticle = firstToken(expected);
+
+  // Só aplica quando a resposta esperada começa com artigo.
+  if(!GERMAN_ARTICLES.includes(expectedArticle)) return false;
+
+  const spokenArticle = firstToken(spoken);
+
+  // Artigo obrigatório: tem de existir e ser exatamente igual.
+  return spokenArticle !== expectedArticle;
+}
+
+function isSmartCloseEnough(spoken, expected){
+  // Artigo obrigatório é validado antes de qualquer tolerância.
+  // Esta regra é independente da opção de gramática das frases.
+  if(hasRequiredArticleMismatch(spoken, expected)){
+    return false;
+  }
+
+  const spokenClean = removeOptionalArticles(tokenizeGerman(spoken)).join(" ");
+  const expectedClean = removeOptionalArticles(tokenizeGerman(expected)).join(" ");
+
+  if(spokenClean === expectedClean) return true;
+
+  if(hasStrictGrammarMismatch(spoken, expected)) return false;
+
+  const sentence = isSentenceLike(expected);
+
+  if(sentence){
+    const strictGrammarOn = $("strictGrammarRecognition") && $("strictGrammarRecognition").checked;
+    const threshold = strictGrammarOn ? 0.90 : 0.70;
+    return smartSimilarity(spoken, expected) >= threshold;
+  }
+
+  // Palavras isoladas continuam tolerantes, mas só depois da validação do artigo.
+  return isCloseEnough(spokenClean, expectedClean);
+}
+
 function checkVoiceAnswer(spokenText){
   if(!currentCard) return false;
-  const spokenForms = voiceForms(spokenText);
-  const accepted = getAllAnswers(currentCard).flatMap(a => voiceForms(a));
-  return spokenForms.some(spoken => accepted.some(exp => isCloseEnough(spoken, exp)));
+
+  const accepted = getAllAnswers(currentCard);
+
+  for(const ans of accepted){
+    if(isSmartCloseEnough(spokenText, ans)){
+      return true;
+    }
+  }
+
+  return false;
 }
 
 
@@ -319,8 +701,234 @@ function showVoiceDebug(correct, heard, accepted, alternatives){
       <br><br>
       <strong>Aceites:</strong><br>
       ${accepted.join(" · ")}
+      ${hasRequiredArticleMismatch(heard, accepted[0] || "") ? "<br><br><span class='voiceBad'>Artigo incorreto ou em falta.</span>" : ""}${hasStrictGrammarMismatch(heard, accepted[0] || "") ? "<br><span class='voiceBad'></span>" : ""}
     </div>
   `;
+}
+
+
+function exactVoiceMatch(spokenText, expectedText){
+  return normalizeVoice(spokenText) === normalizeVoice(expectedText);
+}
+
+function wordWithoutArticleMatch(spokenText, expectedText){
+  return normalizeVoice(stripGermanArticle(spokenText)) === normalizeVoice(stripGermanArticle(expectedText));
+}
+
+function bestExpectedAnswer(spokenText){
+  if(!currentCard) return "";
+  const accepted = getAllAnswers(currentCard);
+  const exact = accepted.find(a => exactVoiceMatch(spokenText, a));
+  if(exact) return exact;
+
+  const noArticle = accepted.find(a => wordWithoutArticleMatch(spokenText, a));
+  if(noArticle) return noArticle;
+
+  return accepted[0] || "";
+}
+
+function shouldRepeatHeard(spokenText){
+  if(!currentCard) return false;
+  const accepted = getAllAnswers(currentCard);
+  return accepted.some(a => exactVoiceMatch(spokenText, a));
+}
+
+function speakFeedbackForVoice(correct, heard){
+  const expected = bestExpectedAnswer(heard);
+  if(correct && shouldRepeatHeard(heard)){
+    speakGerman(heard);
+  }else{
+    speakGerman(expected);
+  }
+  return expected;
+}
+
+
+function setMicStatus(state, text){
+  const dot = $("micStatusDot");
+  const label = $("micStatusText");
+  if(dot) dot.className = "micStatusDot " + state;
+  if(label) label.textContent = text;
+}
+
+function setMicButton(on){
+  if(on){
+    $("micBtn").classList.add("micOn");
+    $("micBtn").textContent = "🎤 Desligar microfone";
+  }else{
+    $("micBtn").classList.remove("micOn");
+    $("micBtn").textContent = "🎤 Ligar microfone";
+  }
+}
+
+function isAutoMicMode(){
+  return $("autoMicEnabled") && $("autoMicEnabled").checked;
+}
+
+function shouldWaitForPortugueseBeforeMic(){
+  return $("waitForPortugueseBeforeMic") && $("waitForPortugueseBeforeMic").checked;
+}
+
+function getAutoMicMaxSilentMs(){
+  const minutes = $("autoMicMaxSilentMinutes") ? Number($("autoMicMaxSilentMinutes").value) : 5;
+  return minutes * 60 * 1000;
+}
+
+function resetAutoMicSilentTimer(){
+  autoMicSilentStartedAt = Date.now();
+}
+
+function autoMicSilenceLimitReached(){
+  if(!autoMicSilentStartedAt) resetAutoMicSilentTimer();
+  return Date.now() - autoMicSilentStartedAt > getAutoMicMaxSilentMs();
+}
+
+function clearAutoMicTimers(){
+  clearTimeout(autoMicTimer);
+  clearTimeout(autoMicRetryTimer);
+}
+
+function stopAllMicActivity(){
+  micMasterOn = false;
+  autoMicSilentStartedAt = 0;
+  clearAutoMicTimers();
+  if(recognition && isListening){
+    try{ recognition.stop(); }catch(e){}
+  }
+  isListening = false;
+  setMicButton(false);
+  setMicStatus("off", "desligado");
+}
+
+function tryStartListening(autoStarted=false){
+  if(!micMasterOn && autoStarted) return;
+  if(isListening) return;
+
+  if(!$("voiceEnabled") || !$("voiceEnabled").checked){
+    $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz desativado na configuração.</span>";
+    stopAllMicActivity();
+    return;
+  }
+
+  if(!currentCard) return;
+  if(!recognition) recognition = setupRecognition();
+  if(!recognition) return;
+
+  if(shouldWaitForPortugueseBeforeMic() && appAudioActive()){
+    setMicStatus("preparing", "preparação");
+    autoMicRetryTimer = setTimeout(()=>scheduleAutoMic(), 50);
+    return;
+  }
+
+  setMicStatus("preparing", "preparação");
+
+  try{
+    recognition.start();
+  }catch(e){
+    if(autoStarted && micMasterOn && isAutoMicMode()){
+      autoMicRetryTimer = setTimeout(()=>tryStartListening(true), 1500);
+    }else{
+      $("voiceResult").innerHTML = "<span class='voiceBad'>Não consegui iniciar o microfone.</span>";
+      if(!isAutoMicMode()) stopAllMicActivity();
+    }
+  }
+}
+
+
+function portugueseSpeechIsEnabled(){
+ const ids=["speakPortuguese","speechPt","ptSpeechEnabled","speakPt","autoSpeakPortuguese","readPortuguese"];
+ for(const id of ids){
+   const el=$(id);
+   if(el) return !!el.checked;
+ }
+
+ // Fallback by label text: look for checkbox near "Ler palavra portuguesa"
+ const inputs=[...document.querySelectorAll('input[type="checkbox"]')];
+ for(const input of inputs){
+   const label=input.closest("label")?.innerText || "";
+   if(label.toLowerCase().includes("portuguesa") || label.toLowerCase().includes("português")){
+     return !!input.checked;
+   }
+ }
+
+ return true;
+}
+
+function scheduleAutoMicFastIfNoPortuguese(){
+ if(!micMasterOn || !isAutoMicMode()) return;
+ if(portugueseSpeechIsEnabled()) return;
+
+ setTimeout(()=>{
+   if(micMasterOn && isAutoMicMode()){
+     tryStartListening(true);
+   }
+ }, 250);
+}
+
+function retryAutoMicStart(){
+ if(!micMasterOn || !isAutoMicMode()) return;
+
+ let tries=0;
+ const attempt=()=>{
+   if(!micMasterOn || !isAutoMicMode()) return;
+   tries++;
+   try{
+     tryStartListening(true);
+   }catch(e){}
+   if(tries<3){
+     setTimeout(attempt, tries*500);
+   }
+ };
+ attempt();
+}
+
+function scheduleAutoMic(){
+  clearAutoMicTimers();
+
+  if(!micMasterOn) return;
+  if(!isAutoMicMode()) return;
+  if(!currentCard) return;
+
+  const delay = $("autoMicDelay") ? Number($("autoMicDelay").value) : 3000;
+
+  // Delay configurado: apenas antes da primeira tentativa de ouvir após a carta/voz PT.
+  setMicStatus("preparing", "preparação");
+
+  autoMicTimer = setTimeout(() => {
+    if(appAudioActive()){
+      // Se a app ainda está a falar, espera em pequenos ciclos, sem reaplicar o delay completo.
+      autoMicRetryTimer = setTimeout(() => scheduleAutoMic(), 300);
+      return;
+    }
+
+    tryStartListening(true);
+  }, delay);
+}
+
+function retryAutoMicAfterSilence(){
+  clearAutoMicTimers();
+
+  if(!micMasterOn) return;
+  if(!isAutoMicMode()) return;
+  if(!currentCard) return;
+
+  if(autoMicSilenceLimitReached()){
+    stopAllMicActivity();
+    $("voiceResult").innerHTML = "<span class='small'>Microfone automático desligado após período de silêncio.</span>";
+    return;
+  }
+
+  setMicStatus("preparing", "preparação");
+
+  // Retry rápido após silêncio: não usa a configuração "espera antes de ouvir".
+  autoMicRetryTimer = setTimeout(() => {
+    if(shouldWaitForPortugueseBeforeMic() && appAudioActive()){
+      retryAutoMicAfterSilence();
+      return;
+    }
+
+    tryStartListening(true);
+  }, 600);
 }
 
 function setupRecognition(){
@@ -337,25 +945,42 @@ function setupRecognition(){
 
   rec.onstart = () => {
     isListening = true;
-    $("micBtn").classList.add("micOn");
-    $("micBtn").textContent = "🎤 A ouvir...";
+    setMicButton(true);
+    setMicStatus("listening", "a ouvir…");
     $("voiceResult").innerHTML = "<span class='voiceListening'>A ouvir... diz a resposta em alemão</span>";
   };
 
   rec.onend = () => {
     isListening = false;
-    $("micBtn").classList.remove("micOn");
-    $("micBtn").textContent = "🎤 Ligar microfone";
+
+    if(isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+    }else{
+      stopAllMicActivity();
+    }
   };
 
   rec.onerror = (event) => {
     isListening = false;
-    $("micBtn").classList.remove("micOn");
-    $("micBtn").textContent = "🎤 Ligar microfone";
-    $("voiceResult").innerHTML = `<span class='voiceBad'>Erro no microfone: ${event.error}</span>`;
+
+    if(event.error === "no-speech" && isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+      return;
+    }
+
+    if(event.error !== "no-speech"){
+      $("voiceResult").innerHTML = `<span class='voiceBad'>Erro no microfone: ${event.error}</span>`;
+    }
+
+    if(isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+    }else{
+      stopAllMicActivity();
+    }
   };
 
   rec.onresult = (event) => {
+    resetAutoMicSilentTimer();
     const alternatives = Array.from(event.results[0]).map(r => r.transcript);
     const best = alternatives[0] || "";
     const accepted = getAllAnswers(currentCard);
@@ -368,87 +993,142 @@ function setupRecognition(){
       $("voiceResult").innerHTML = "";
     }
 
+    const spokenExpected = speakFeedbackForVoice(correct, best);
+
     if(correct){
-      speakGerman(best || expected);
       registerCorrect();
       correctCount++;
       removeCurrentFromQueue();
-      showVoiceCardFeedback(true, best, expected);
+      showVoiceCardFeedback(true, best, spokenExpected || expected);
       updateStats();
     }else{
-      speakGerman(expected);
-      registerWrong();
+      const expectedForError = spokenExpected || expected || bestExpectedAnswer(best);
+      const classifiedError = dt52Classify(expectedForError, best);
+      registerWrong(classifiedError, best);
       wrongCount++;
-      showVoiceCardFeedback(false, best, expected);
+      showVoiceCardFeedback(false, best, spokenExpected || expected);
       updateStats();
     }
 
-    setTimeout(nextCard, 5000);
+    setTimeout(() => {
+      nextCard();
+
+      if(micMasterOn && isAutoMicMode()){
+        // O scheduleAutoMic já respeita appAudioActive, mas deixamos uma margem extra.
+        scheduleAutoMic();
+retryAutoMicStart();
+      }else if(micMasterOn && !isAutoMicMode()){
+        stopAllMicActivity();
+      }
+    }, 5000);
   };
 
   return rec;
 }
 
-function startVoiceRecognition(){
-  if(isListening){ stopVoiceRecognition(); return; }
-  if(!$("voiceEnabled") || !$("voiceEnabled").checked) {
-    $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz desativado na configuração.</span>";
-    return;
+function startVoiceRecognition(autoStarted=false){
+  // Quando vem de um clique, o browser passa MouseEvent. Isto deve contar como manual.
+  if(autoStarted && typeof autoStarted === "object") autoStarted = false;
+
+  if(!autoStarted){
+    if(micMasterOn){
+      stopAllMicActivity();
+      $("voiceResult").innerHTML = "<span class='small'>Microfone desligado.</span>";
+      return;
+    }
+
+    micMasterOn = true;
+    resetAutoMicSilentTimer();
+    setMicButton(true);
+    setMicStatus("preparing", "preparação");
   }
-  if(!currentCard) return;
-  if(!recognition) recognition = setupRecognition();
-  if(!recognition) return;
-  try{
-    recognition.start();
-  }catch(e){
-    $("voiceResult").innerHTML = "<span class='voiceBad'>Não consegui iniciar o microfone.</span>";
-  }
+
+  tryStartListening(autoStarted);
 }
 
 function stopVoiceRecognition(){
-  if(recognition && isListening) recognition.stop();
-  isListening=false;
-  $("micBtn").classList.remove("micOn");
-  $("micBtn").textContent = "🎤 Ligar microfone";
+  stopAllMicActivity();
   $("voiceResult").innerHTML = "";
 }
 
-function switchPage(page){
-["train","add","db","config"].forEach(p=>$("page-"+p).classList.toggle("hidden",p!==page));
-document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.page===page));
-if(page==="db") renderWordList();
-if(page==="train") startPractice();
+
+function renderCurrentTrainingCard(){
+ const card=$("card");
+ if(!card || !currentCard) return;
+ card.className="card";
+ card.innerHTML=currentCard.pt;
+ $("answerArea").classList.add("hidden");
+ if($("voiceResult")) $("voiceResult").innerHTML="";
+ updateStats();
+ renderProgress();
+ updateSessionProgress();
 }
 
-function findDuplicates(pt,de,synonyms,ignoreIndex=null){
- const deNorm=normalize(de), ptNorm=normalize(pt);
- const incomingSyn=(synonyms||[]).map(normalize).filter(Boolean);
- let matches=[];
+function resumePractice(){
+ if(currentCard){
+   renderCurrentTrainingCard();
+   return;
+ }
+ if(practiceQueue && practiceQueue.length){
+   nextCard();
+   return;
+ }
+ startPractice();
+}
+
+function switchPage(page){
+if(page !== "train") stopAllMicActivity();
+["train","statsPage","add","db","config"].forEach(p=>$("page-"+p).classList.toggle("hidden",p!==page));
+document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.page===page));
+if(page==="db") renderWordList();
+if(page==="statsPage") renderStatsPage();
+if(page==="train") resumePractice();
+}
+
+function primaryDuplicateMatches(pt,de,ignoreIndex=null){
+ const ptNorm=normalize(pt);
+ const deNorm=normalize(de);
+ const matches=[];
  vocabulary.forEach((item,i)=>{
-   if(ignoreIndex!==null&&i===ignoreIndex)return;
-   const existingTerms=allGermanTerms(item);
-   const deSame=deNorm && normalize(item.de)===deNorm;
-   const ptSame=ptNorm && normalize(item.pt)===ptNorm;
-   const synonymOverlap=incomingSyn.filter(x=>existingTerms.includes(x));
-   const deAsExistingSynonym=deNorm && (item.synonyms||[]).map(normalize).includes(deNorm);
-   if(ptSame||deSame||synonymOverlap.length||deAsExistingSynonym){
-     matches.push({index:i,item,ptSame,deSame,synonymOverlap,deAsExistingSynonym,germanOverlap:[...(deSame?[deNorm]:[]),...synonymOverlap]});
+   if(ignoreIndex!==null && i===ignoreIndex) return;
+   const ptSame=!!ptNorm && normalize(item.pt)===ptNorm;
+   const deSame=!!deNorm && normalize(item.de)===deNorm;
+   if(ptSame || deSame){
+     matches.push({index:i,item,ptSame,deSame,hardDuplicate:true});
    }
  });
  return matches;
 }
-function findStrictDuplicateIndex(pt,de,ignoreIndex=null){
- const deNorm=normalize(de), ptNorm=normalize(pt);
- for(let i=0;i<vocabulary.length;i++){
-   if(ignoreIndex!==null&&i===ignoreIndex) continue;
-   const item=vocabulary[i];
-   if(deNorm && normalize(item.de)===deNorm) return i;
-   if(ptNorm && normalize(item.pt)===ptNorm) return i;
- }
- return -1;
+
+function synonymOverlapMatches(pt,de,synonyms,ignoreIndex=null){
+ const incomingSyn=(synonyms||[]).map(normalize).filter(Boolean);
+ const deNorm=normalize(de);
+ const matches=[];
+ vocabulary.forEach((item,i)=>{
+   if(ignoreIndex!==null && i===ignoreIndex) return;
+   const existingTerms=allGermanTerms(item);
+   const synonymOverlap=incomingSyn.filter(x=>existingTerms.includes(x));
+   const deAsExistingSynonym=!!deNorm && (item.synonyms||[]).map(normalize).includes(deNorm);
+   if(synonymOverlap.length || deAsExistingSynonym){
+     matches.push({index:i,item,synonymOverlap,deAsExistingSynonym,warningOnly:true});
+   }
+ });
+ return matches;
 }
-function findOverlapWarnings(pt,de,synonyms,ignoreIndex=null){
- return findDuplicates(pt,de,synonyms,ignoreIndex).filter(m=>!m.ptSame && !m.deSame && (m.synonymOverlap?.length || m.deAsExistingSynonym));
+
+function findDuplicates(pt,de,synonyms,ignoreIndex=null){
+ const hard=primaryDuplicateMatches(pt,de,ignoreIndex);
+ const warnings=synonymOverlapMatches(pt,de,synonyms,ignoreIndex);
+ const byIndex=new Map();
+ hard.forEach(m=>byIndex.set(m.index,{...m,germanOverlap:[]}));
+ warnings.forEach(m=>{
+   const existing=byIndex.get(m.index)||{index:m.index,item:m.item,ptSame:false,deSame:false,germanOverlap:[]};
+   existing.warningOnly=!existing.hardDuplicate;
+   existing.germanOverlap=[...(existing.germanOverlap||[]),...(m.synonymOverlap||[])];
+   existing.deAsExistingSynonym=!!m.deAsExistingSynonym;
+   byIndex.set(m.index,existing);
+ });
+ return [...byIndex.values()];
 }
 function mergeSynonyms(existing, incoming){
   const combined = [...(existing || []), ...(incoming || [])];
@@ -459,54 +1139,815 @@ function mergeSynonyms(existing, incoming){
   return unique;
 }
 function findBestExistingIndex(pt,de,synonyms){
-  return findStrictDuplicateIndex(pt,de,null);
+  const matches = primaryDuplicateMatches(pt,de,null);
+  if(!matches.length) return -1;
+  const exactDe = normalize(de);
+  const exactPt = normalize(pt);
+  const exact = matches.find(m => normalize(m.item.de) === exactDe || normalize(m.item.pt) === exactPt);
+  return exact ? exact.index : matches[0].index;
 }
 function renderDuplicateWarning(){
 const editIndex=$("editIndex").value===""?null:Number($("editIndex").value);
 const matches=findDuplicates($("ptWord").value,$("deWord").value,parseSynonyms($("synonyms").value),editIndex),box=$("duplicateNotice");
 if(!matches.length){box.className="";box.innerHTML="";return matches}
-const strict=matches.filter(m=>m.ptSame||m.deSame);
+const hard=matches.filter(m=>m.hardDuplicate || m.ptSame || m.deSame);
 box.className="notice warn";
-box.innerHTML=(strict.length?"<strong>Duplicado real encontrado:</strong>":"<strong>Sobreposição encontrada:</strong>")+"<ul class='dup-list'>"+matches.map(m=>`<li>${m.item.pt} → ${m.item.de}${m.deSame?"<br>Mesmo alemão principal.":""}${m.ptSame?"<br>Mesmo significado em português.":""}${m.synonymOverlap?.length?`<br>Sinónimos já existentes: ${m.synonymOverlap.join(", ")}`:""}${m.deAsExistingSynonym?"<br>O alemão principal já existe como sinónimo noutro cartão.":""}</li>`).join("")+"</ul><span class='small'>Duplicados reais usam PT/DE principal. Sobreposições por sinónimo são apenas aviso.</span>";return matches;
+box.innerHTML="<strong>"+(hard.length?"Duplicado real encontrado:":"Sobreposição de termos encontrada:")+"</strong><ul class='dup-list'>"+
+matches.map(m=>`<li>${m.item.pt} → ${m.item.de}${m.ptSame?"<br>Mesmo significado em português.":""}${m.deSame?"<br>Mesma resposta alemã principal.":""}${m.germanOverlap&&m.germanOverlap.length?`<br>Sinónimos/termos repetidos: ${m.germanOverlap.join(", ")}`:""}${m.deAsExistingSynonym?"<br>A resposta alemã principal já existe como sinónimo noutra carta.":""}${!(m.hardDuplicate||m.ptSame||m.deSame)?"<br><span class='small'>Aviso apenas — não bloqueia a importação.</span>":""}</li>`).join("")+
+"</ul><span class='small'>Duplicados reais são PT/DE principal igual. Sobreposição de sinónimos é apenas aviso.</span>";return matches;
+}
+
+function resetLearningForCurrentEdit(){
+ const editVal=$("editIndex").value;
+ if(editVal===""){showNotice("saveNotice","Guarda primeiro a palavra antes de resetar aprendizagem.","warn");return}
+ const idx=Number(editVal), w=vocabulary[idx];
+ if(!w)return;
+ w.memoryLevel=0;w.stabilityScore=0;w.xp=0;w.studyState="new";w.learningState="auto";w.mastered=false;w.difficultyBoost=false;
+ w.correctStreak=0;w.wrongStreak=0;w.sessionDueAt=0;w.nextReviewAt=0;w.reviewIntervalDays=0;
+ saveVocabulary();showNotice("saveNotice","Aprendizagem resetada para esta palavra.","ok");renderWordList();startPractice();
 }
 
 function saveWord(){
-const pt=$("ptWord").value.trim(),de=$("deWord").value.trim(),syn=parseSynonyms($("synonyms").value),sent=$("sentence").value.trim();
-if(!pt||!de){showNotice("saveNotice","Preenche pelo menos português e alemão.","error");return}
-const editVal=$("editIndex").value, mastered=$("masteredCheck").checked;
-let previous = editVal==="" ? {} : vocabulary[Number(editVal)];
-const item={pt,de,synonyms:syn,sentence:sent,createdAt:previous.createdAt||Date.now(),updatedAt:Date.now(),correctStreak: mastered ? (previous.correctStreak||MASTER_LIMIT) : 0, wrongStreak: mastered ? 0 : (previous.wrongStreak||0), difficultyBoost: mastered ? false : (previous.difficultyBoost||false), mastered};
-if(editVal===""){vocabulary.push(item);showNotice("saveNotice","Palavra adicionada.","ok")}
-else{vocabulary[Number(editVal)]=item;showNotice("saveNotice","Palavra atualizada.","ok")}
-saveVocabulary();clearForm();renderWordList();startPractice();
+const pt=$("ptWord").value.trim();
+const de=$("deWord").value.trim();
+const syn=parseSynonyms($("synonyms").value);
+const sent=$("sentence").value.trim();
+const editVal=$("editIndex").value;
+const learningState=$("learningState") ? $("learningState").value : "auto";
+const mastered=learningState==="mastered";
+
+if(!pt||!de){
+  showNotice("saveNotice","Preenche pelo menos português e alemão.","error");
+  return;
 }
+
+let previous = editVal==="" ? {} : (vocabulary[Number(editVal)] || {});
+
+const item={
+  ...previous,
+  pt,de,synonyms:syn,sentence:sent,
+  createdAt:previous.createdAt||Date.now(),
+  updatedAt:Date.now(),
+  learningState,
+  mastered,
+  correctStreak: mastered ? Math.max(previous.correctStreak||0, 3) : (previous.correctStreak||0),
+  wrongStreak: mastered ? 0 : (previous.wrongStreak||0),
+  difficultyBoost: mastered ? false : (previous.difficultyBoost||false),
+  memoryLevel: mastered ? Math.max(previous.memoryLevel||0,85) : (previous.memoryLevel??0),
+  stabilityScore: mastered ? Math.max(previous.stabilityScore||0,75) : (previous.stabilityScore??0),
+  xp: previous.xp||0,
+  studyState: mastered ? "mastered" : (previous.studyState||"new"),
+  successCount: previous.successCount||0,
+  failCount: previous.failCount||0,
+  seenCount: previous.seenCount||0,
+  errorStats: previous.errorStats || {memory:0,article:0,grammar:0},
+  sessionDueAt:0,
+  lastSessionSeen:0,
+  nextReviewAt:previous.nextReviewAt||0,
+  reviewIntervalDays:previous.reviewIntervalDays||0,
+  lastReviewedAt:previous.lastReviewedAt||0
+};
+
+if(learningState==="suspended"){
+  item.mastered=false;
+  item.studyState="suspended";
+}
+if(learningState==="focus"){
+  item.mastered=false;
+  if(item.studyState==="mastered" || item.studyState==="suspended"){
+    item.studyState="learning";
+  }
+}
+if(learningState==="auto" && previous.learningState && previous.learningState!=="auto"){
+  item.mastered=false;
+  if(item.studyState==="mastered" || item.studyState==="suspended"){
+    item.studyState="learning";
+  }
+}
+
+if(editVal===""){
+  vocabulary.push(item);
+  showNotice("saveNotice","Palavra adicionada.","ok");
+}else{
+  vocabulary[Number(editVal)]=item;
+  showNotice("saveNotice","Palavra atualizada.","ok");
+}
+
+saveVocabulary();
+clearForm();
+renderWordList();
+startPractice();
+}
+
 function clearForm(){
-$("editIndex").value="";$("formTitle").textContent="Adicionar vocabulário";$("ptWord").value="";$("deWord").value="";$("synonyms").value="";$("sentence").value="";$("masteredCheck").checked=false;$("duplicateNotice").className="";$("duplicateNotice").innerHTML="";
+$("editIndex").value="";
+$("formTitle").textContent="Adicionar vocabulário";
+$("ptWord").value="";
+$("deWord").value="";
+$("synonyms").value="";
+$("sentence").value="";
+if($("learningState")) $("learningState").value="auto";
+$("duplicateNotice").className="";
+$("duplicateNotice").innerHTML="";
 }
+
 function editWord(i){
-const item=vocabulary[i];$("editIndex").value=i;$("formTitle").textContent="Editar vocabulário";$("ptWord").value=item.pt;$("deWord").value=item.de;$("synonyms").value=(item.synonyms||[]).join(", ");$("sentence").value=item.sentence||"";$("masteredCheck").checked=!!item.mastered;switchPage("add");renderDuplicateWarning();window.scrollTo({top:0,behavior:"smooth"});
+const item=vocabulary[i];
+if(!item)return;
+$("editIndex").value=i;
+$("formTitle").textContent="Editar vocabulário";
+$("ptWord").value=item.pt||"";
+$("deWord").value=item.de||"";
+$("synonyms").value=(item.synonyms||[]).join(", ");
+$("sentence").value=item.sentence||"";
+if($("learningState")) $("learningState").value=item.learningState || (item.mastered ? "mastered" : "auto");
+switchPage("add");
+renderDuplicateWarning();
+setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);
 }
+
 function deleteWord(i){if(!confirm("Apagar esta palavra?"))return;vocabulary.splice(i,1);saveVocabulary();renderWordList();startPractice()}
-function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;correctCount=0;wrongCount=0;saveVocabulary();renderWordList();startPractice()}
+function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;correctCount=0;wrongCount=0;updateSessionProgress();saveVocabulary();renderWordList();startPractice()}
+
+
+
+function takeSessionSnapshot(){
+  sessionStartedAt = Date.now();
+  window.sessionCardCounter=0;
+  sessionMasteredRemembered=0;
+  sessionMasteredForgotten=0;
+  sessionRecoveredConfirmations=0;
+  sessionFailedConfirmations=0;
+  sessionInitialSnapshot = {};
+  vocabulary.forEach((w,i)=>{
+    sessionInitialSnapshot[i] = {
+      memoryLevel: w.memoryLevel || 0,
+      mastered: !!w.mastered,
+learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
+      studyState: w.studyState || "new",
+      failCount: w.failCount || 0,
+      successCount: w.successCount || 0,
+      difficultyBoost: !!w.difficultyBoost
+    };
+  });
+}
+
+function sessionSummaryHtml(){
+  const durationMin = Math.max(1, Math.round((Date.now() - sessionStartedAt)/60000));
+  let improved = 0, newlyMastered = 0, stillCritical = 0, difficult = 0, errors = 0, learnedActive = 0, dueTomorrow = 0;
+
+  vocabulary.forEach((w,i)=>{
+    const before = sessionInitialSnapshot[i] || {};
+    const beforeMem = before.memoryLevel || 0;
+    const nowMem = w.memoryLevel || 0;
+
+    if(nowMem > beforeMem) improved++;
+    if(!before.mastered && w.mastered) newlyMastered++;
+    if(isCritical(w)) stillCritical++;
+    if(w.difficultyBoost && !w.mastered) difficult++;
+    if((w.failCount||0) > (before.failCount||0)) errors++;
+    if((w.studyState||"new") === "learning" && !w.mastered) learnedActive++;
+    if(w.nextReviewAt && w.nextReviewAt <= Date.now()+24*60*60*1000) dueTomorrow++;
+  });
+
+  const avgMemory = vocabulary.length ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/vocabulary.length) : 0;
+const dueNow = vocabulary.filter(w=>isDueForReview(w) && (w.mastered || w.studyState==="mastered")).length;
+const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
+
+  return `
+    <div class="answer-title">Sessão concluída 🎉</div>
+    <div class="grid2" style="font-size:16px;text-align:left;margin-top:14px">
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Duração:</strong><br>${durationMin} min</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Cartões apresentados:</strong><br>${correctCount + wrongCount}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Consolidadas:</strong><br>${newlyMastered}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Palavras recuperadas:</strong><br>${improved}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Palavras difíceis:</strong><br>${difficult}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Zona crítica ativa:</strong><br>${stillCritical}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas recordadas:</strong><br>${sessionMasteredRemembered}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas esquecidas:</strong><br>${sessionMasteredForgotten}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Recuperadas:</strong><br>${sessionRecoveredConfirmations}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Revisões 24h:</strong><br>${dueTomorrow}</div><div class="box" style="box-shadow:none;background:#f8fafc"><strong>Scheduler:</strong><br>${$("adaptiveScheduler")?.checked?"Adaptativo":"Clássico"}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Confirmações falhadas:</strong><br>${sessionFailedConfirmations}</div>
+    </div>
+    <div class="small" style="margin-top:12px">
+      Memória média atual: <strong>${avgMemory}%</strong><br>
+      Acertos nesta sessão: <strong>${correctCount}</strong> · Erros/skip: <strong>${wrongCount}</strong>
+    </div>
+  `;
+}
+
+function showSessionComplete(){
+  currentCard=null;
+  const card=$("card");
+  card.className="card revealed";
+  card.innerHTML=sessionSummaryHtml();
+  $("answerArea").classList.add("hidden");
+  if($("voiceResult"))$("voiceResult").innerHTML="";
+  renderStatsPage();
+}
+
+
+function getMaxCardsPerSession(){
+ const el=$("maxCardsPerSession");
+ return el ? Number(el.value) : 40;
+}
+
+// Mantido apenas por compatibilidade interna. A V10.6.11 removeu o mínimo como critério de fim.
+function getMinCardsPerSession(){
+ return 0;
+}
+
+function getMinReviewsPerSession(){
+ const el=$("minReviewsPerSession");
+ return el ? Number(el.value) : 5;
+}
+
+function getRequiredReviewsForSession(){
+ return Math.min(getMinReviewsPerSession(), sessionPlannedReviews||0);
+}
+
+function getSessionExcludedThreshold(){
+ const el=$("sessionExcludedThreshold");
+ return el ? Number(el.value) : 50;
+}
+
+function getSessionWordDoneMemory(){
+ // V10.6.14: exclusão/domínio da ronda segue o critério pedagógico principal.
+ return masterThreshold();
+}
+
+function getSessionWordDoneStreak(){
+ // V10.6.15: fixed reference used only for display. Streak no longer defines exclusion.
+ return 5;
+}
+
+function getTargetDistinctWords(){
+ const el=$("targetDistinctWords");
+ return el ? Number(el.value) : 12;
+}
+
+function sessionAnsweredCount(){
+ return (correctCount||0) + (wrongCount||0);
+}
+
+function sessionWordKey(word){
+ const idx=vocabulary.indexOf(word);
+ return idx>=0 ? String(idx) : ((word?.pt||"")+"|"+(word?.de||""));
+}
+
+function markSessionWord(word){
+ if(!word) return;
+ sessionWords.add(sessionWordKey(word));
+}
+
+function markSessionWordDone(word){
+ if(!word) return;
+ sessionDoneWords.add(sessionWordKey(word));
+}
+
+function sessionExcludedPercent(){
+ const total=sessionPlannedWords.size || sessionWords.size || 0;
+ if(!total) return 0;
+ return Math.round((sessionDoneWords.size/total)*100);
+}
+
+function estimatedRemainingCards(){
+ const max=getMaxCardsPerSession();
+ const answered=sessionAnsweredCount();
+ const queueRemaining=practiceQueue ? practiceQueue.length : 0;
+ return Math.min(Math.max(0,max-answered), queueRemaining);
+}
+
+function hasCriticalActive(){ return practiceQueue.some(w=>isCritical(w)); }
+function hasConfirmationActive(){ return practiceQueue.some(w=>isConfirmationState(w)); }
+
+function isViableCard(word){
+ if(!word) return false;
+ if(isCritical(word)) return true;
+ if(isConfirmationState(word)) return true;
+ if((word.studyState||"new")==="learning") return true;
+ if(isDueForReview(word) && (word.mastered || word.studyState==="mastered")) return true;
+ return isSessionDue(word);
+}
+
+function hasViableCard(){ return practiceQueue.some(w=>isViableCard(w)); }
+
+function sessionEndBlocker(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return "limite absoluto atingido";
+ if(hasCriticalActive()) return "crítica ativa";
+ if(hasConfirmationActive()) return "confirmação ativa";
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return `faltam revisões ${sessionReviewCount}/${requiredReviews}`;
+ if(sessionExcludedPercent() < getSessionExcludedThreshold()) return `excluídas ${sessionExcludedPercent()}%/${getSessionExcludedThreshold()}%`;
+ return "pronta para terminar";
+}
+
+function canEndSessionAdaptive(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return true;
+ if(hasCriticalActive()) return false;
+ if(hasConfirmationActive()) return false;
+
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return false;
+
+ const enoughExcluded=sessionExcludedPercent() >= getSessionExcludedThreshold();
+
+ // When target exclusion is reached and mandatory blockers are clear, end the round.
+ if(enoughExcluded) return true;
+
+ // If no useful cards are available, end too.
+ if(!hasViableCard()) return true;
+
+ return false;
+}
+
+function canAddMoreSessionCards(){
+ const max=getMaxCardsPerSession();
+ const answered=sessionAnsweredCount();
+ const queued=practiceQueue ? practiceQueue.length : 0;
+ return (answered + queued) < max;
+}
+
+function countEligibleCards(){
+ return practiceQueue ? practiceQueue.filter(w=>isViableCard(w) && isSessionDue(w)).length : 0;
+}
+
+
+function sessionStatusLabel(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return "limite absoluto atingido";
+ if(hasCriticalActive()) return "crítica ativa";
+ if(hasConfirmationActive()) return "confirmação ativa";
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return `aguarda revisões ${sessionReviewCount}/${requiredReviews}`;
+ if(sessionExcludedPercent() >= getSessionExcludedThreshold()) return "pronta para terminar";
+ if(!hasViableCard()) return "sem cartas elegíveis";
+ return `a excluir palavras (${sessionExcludedPercent()}%/${getSessionExcludedThreshold()}%)`;
+}
+
+
+function roundDetailsIsOpen(){
+ const current=$("roundDetails");
+ if(current) return !!current.open;
+ return localStorage.getItem("roundDetailsOpen")==="1";
+}
+
+function rememberRoundDetailsState(){
+ const d=$("roundDetails");
+ if(!d) return;
+ d.addEventListener("toggle",()=>localStorage.setItem("roundDetailsOpen", d.open ? "1" : "0"));
+}
+
+function updateSessionProgress(){
+ const el=$("sessionProgressInfo");
+ if(!el) return;
+
+ const total=sessionPlannedWords.size || sessionWords.size || 0;
+ const excluded=sessionDoneWords.size || 0;
+ const queue=practiceQueue ? practiceQueue.length : 0;
+ const eligible=countEligibleCards ? countEligibleCards() : queue;
+ const requiredReviews=getRequiredReviewsForSession ? getRequiredReviewsForSession() : 0;
+ const reviewDoneDisplay=sessionReviewCount>requiredReviews?`${requiredReviews}+`:sessionReviewCount;
+
+ el.innerHTML=`${sessionAnsweredCount()} respondidas · ${excluded}/${total} excluídas`;
+
+ if($("voiceDebug") && $("voiceDebug").checked){
+   const detailsOpen=roundDetailsIsOpen();
+   let blocker="";
+   if(hasCriticalActive && hasCriticalActive()) blocker="crítica ativa";
+   else if(hasConfirmationActive && hasConfirmationActive()) blocker="confirmação ativa";
+   else if(sessionReviewCount < requiredReviews) blocker=`faltam revisões ${sessionReviewCount}/${requiredReviews}`;
+   else blocker="sem bloqueio relevante";
+
+   el.innerHTML += `<details id="roundDetails" class="compact-details"${detailsOpen ? " open" : ""}>
+     <summary>Estado da ronda</summary>
+     Respondidas: ${sessionAnsweredCount()}<br>
+     Excluídas: ${excluded}/${total}<br>
+     Cartas em espera: ${queue}<br>
+     Disponíveis agora: ${eligible}<br>
+     Revisões feitas: ${reviewDoneDisplay}/${requiredReviews}<br>
+     Revisões vencidas: ${sessionDueReviewsTotal||0}<br>
+     Revisões incluídas: ${sessionPlannedReviews||0}<br>
+     Bloqueio: ${blocker}
+   </details>`;
+   rememberRoundDetailsState();
+ }
+}
+
+function shouldRemoveWordFromCurrentRound(word,lastSuccess){
+ if(!word || !lastSuccess) return false;
+
+ // V10.6.14:
+ // Excluída da ronda = atingiu o critério pedagógico principal de domínio.
+ // A streak da ronda NÃO exclui; serve apenas para espaçamento.
+ return (word.memoryLevel||0) >= masterThreshold();
+}
+
+function removeAllFromPracticeQueue(word){
+ if(!word || !practiceQueue) return;
+ practiceQueue=practiceQueue.filter(w=>w!==word);
+}
+
+function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+
+function cfgNumber(id,fallback){
+ const el=$(id);
+ return el ? Number(el.value) : fallback;
+}
+function spacingRange(kind){
+ if(kind==="low") return [cfgNumber("spacingLowMin",2), cfgNumber("spacingLowMax",3)];
+ if(kind==="mid") return [cfgNumber("spacingMidMin",4), cfgNumber("spacingMidMax",7)];
+ if(kind==="high") return [cfgNumber("spacingHighMin",8), cfgNumber("spacingHighMax",12)];
+ if(kind==="veryHigh") return [cfgNumber("spacingVeryHighMin",13), cfgNumber("spacingVeryHighMax",20)];
+ return [2,3];
+}
+function randomSpacing(kind){
+ const r=spacingRange(kind);
+ return randomInt(Math.min(r[0],r[1]), Math.max(r[0],r[1]));
+}
+
+function applySpacingMode(distance){
+ const mode=$("repeatSpacingMode") ? $("repeatSpacingMode").value : "smart";
+ if(mode==="compact") return Math.max(1,Math.round(distance*0.75));
+ if(mode==="wide") return Math.max(1,Math.round(distance*1.35));
+ return distance;
+}
+
+
+function getCardType(w){
+ const de=(w?.de||"").trim();
+ if(!de) return "normal";
+
+ // Manual override para futuras versões/importações.
+ if(w.cardType==="sentence" || w.type==="sentence") return "sentence";
+ if(w.cardType==="normal" || w.type==="normal" || w.type==="word" || w.type==="expression") return "normal";
+
+ const lower=de.toLowerCase();
+
+ // Frase clara: pontuação final no campo alemão principal.
+ if(/[.!?]$/.test(de)) return "sentence";
+
+ // Frase provável: sujeito/início de frase + verbo conjugado.
+ const starters=/^(ich|du|er|sie|es|wir|ihr|das|dies|dieser|diese|dieses|man)\b/i;
+ const conjugated=/\b(bin|bist|ist|sind|seid|war|waren|wäre|habe|hast|hat|haben|habt|hatte|hatten|werde|wirst|wird|werden|kann|kannst|können|könnt|muss|musst|müssen|müsst|soll|sollst|sollen|sollt|will|willst|wollen|wollt|möchte|möchtest|möchten|mag|magst|glaube|glaubst|glaubt|denke|denkst|denkt|gehe|gehst|geht|komme|kommst|kommt|fahre|fährst|fährt|mache|machst|macht|brauche|brauchst|braucht|freue|freust|freut|finde|findest|findet|sehe|siehst|sieht)\b/i;
+
+ if(starters.test(lower) && conjugated.test(lower)) return "sentence";
+
+ // Padrões completos comuns.
+ if(/\b(es gibt|das ist|ich bin|ich habe|ich möchte|ich muss|ich kann|wir sind|wir haben|er ist|sie ist)\b/i.test(lower)) return "sentence";
+
+ // Expressões como "auf jeden Fall", "sich freuen auf" e "überzeugt sein" ficam normais.
+ return "normal";
+}
+
+function isPhraseCard(w){
+ return getCardType(w)==="sentence";
+}
+
+function cardTypeLabel(w){
+ return getCardType(w)==="sentence" ? "Frase" : "Palavra";
+}
+
+
+
+function getMinPhrasesPerSession(){
+ const el=$("minPhrasesPerSession");
+ return el ? Number(el.value) : 1;
+}
+
+function shouldShowInspector(){
+ const el=$("showWordInspector");
+ return !!(el && el.checked);
+}
+
+function calculatedWordState(w){
+ if(!w) return "—";
+ if(isCritical(w)) return "Zona crítica";
+ if(isConfirmationState(w)) return "Confirmação";
+ if((w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered") && isDueForReview(w)) return "Revisão vencida";
+ if(w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered" || (w.memoryLevel||0)>=masterThreshold()) return "Dominada";
+ if((w.memoryLevel||0) >= Math.max(0, masterThreshold()-10)) return "Quase dominada";
+ if((w.studyState||"new")==="new" && (w.seenCount||0)===0) return "Nova";
+ return "Aprendizagem";
+}
+
+function reviewDueLabel(w){
+ if(!w || !w.nextReviewAt) return "sem data";
+ const diff=Date.now()-w.nextReviewAt;
+ const days=Math.floor(Math.abs(diff)/86400000);
+ if(diff>=0) return days===0 ? "vencida hoje" : `vencida há ${days} dia(s)`;
+ return days===0 ? "hoje" : `daqui a ${days} dia(s)`;
+}
+
+function cardDistanceInfo(w){
+ const now=window.sessionCardCounter||0;
+ const lastSeen=w && w.lastSeenCardIndex ? now-w.lastSeenCardIndex : null;
+ const due=w && w.sessionDueAt ? w.sessionDueAt-now : null;
+ return {
+   lastSeen:lastSeen===null ? "—" : `há ${Math.max(0,lastSeen)} carta(s)`,
+   nextDue:due===null ? "—" : `~${Math.max(0,due)} carta(s)`
+ };
+}
+
+function escapeHTML(s){
+ return String(s||"").replace(/[&<>"']/g, m => ({
+   "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ }[m]));
+}
+
+function showModal(title, body){
+ let modal=$("appModal");
+ if(!modal){
+   modal=document.createElement("div");
+   modal.id="appModal";
+   modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+   modal.innerHTML=`<div style="background:white;color:#111;max-width:520px;width:100%;max-height:85vh;overflow:auto;border-radius:18px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
+     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px">
+       <h2 id="appModalTitle" style="margin:0;font-size:18px"></h2>
+       <button id="appModalClose" type="button">Fechar</button>
+     </div>
+     <div id="appModalBody"></div>
+   </div>`;
+   document.body.appendChild(modal);
+   $("appModalClose").onclick=()=>modal.style.display="none";
+   modal.onclick=(e)=>{ if(e.target===modal) modal.style.display="none"; };
+ }
+ $("appModalTitle").textContent=title;
+ $("appModalBody").innerHTML=body;
+ modal.style.display="flex";
+}
+
+function openWordInspector(index){
+ const w=vocabulary[index];
+ if(!w) return;
+ const dist=cardDistanceInfo(w);
+ const threshold=masterThreshold();
+ const missing=Math.max(0, threshold-(w.memoryLevel||0));
+ const due=isDueForReview(w);
+ const roundStreak=sessionRoundStreak[sessionWordKey(w)]||0;
+
+ const technical=`<details style="margin-top:10px">
+<summary><b>Detalhes técnicos</b></summary>
+<div class="small" style="margin-top:8px;line-height:1.55">
+Categoria spacing: ${w.lastSpacingCategory||"—"}<br>
+Distância sorteada: ${w.lastSpacingDistance||"—"}<br>
+Motivo spacing: ${w.lastSpacingReason||"—"}<br>
+Streak usada no spacing: ${w.lastSpacingHistoricalStreak ?? w.correctStreak ?? 0}<br>
+Streak ronda no último cálculo: ${w.lastSpacingRoundStreak ?? roundStreak}<br>
+sessionDueAt: ${w.sessionDueAt||"—"}<br>
+lastSeenCardIndex: ${w.lastSeenCardIndex||"—"}
+</div>
+</details>`;
+
+ const body=`<div style="line-height:1.55">
+<b>${escapeHTML(w.de||"")}</b><br>
+<span class="small">${escapeHTML(w.pt||"")}</span>
+<hr>
+<b>Estado:</b> ${calculatedWordState(w)}<br>
+<b>Tipo:</b> ${cardTypeLabel(w)}<br>
+<b>Memory:</b> ${Math.round(w.memoryLevel||0)}%<br>
+<b>Domínio:</b> ${threshold}%${missing>0 ? ` · faltam ${Math.round(missing)}%` : ""}<br>
+<b>Stability:</b> ${Math.round(w.stabilityScore||0)}%<br>
+<b>XP:</b> ${Math.round(w.xp||0)}<br>
+<b>Streak histórica:</b> ${w.correctStreak||0}<br>
+<b>Streak ronda:</b> ${roundStreak}<br>
+<hr>
+<b>Última aparição:</b> ${dist.lastSeen}<br>
+<b>Próxima aparição prevista:</b> ${dist.nextDue}<br>
+<hr>
+<b>Próxima revisão:</b> ${w.nextReviewAt ? new Date(w.nextReviewAt).toLocaleDateString() : "—"}<br>
+<b>Estado da revisão:</b> ${reviewDueLabel(w)}${due ? " ✅" : ""}<br>
+${isCritical(w) ? "<b>Zona crítica:</b> ativa<br>" : ""}
+${isConfirmationState(w) ? "<b>Confirmação:</b> ativa<br>" : ""}
+${technical}
+</div>`;
+
+ showModal("Inspector da Palavra", body);
+}
+
+
+function retentionChallengeCards(active, limit=3){
+ return active
+   .filter(w => (w.memoryLevel||0) >= 75 && (w.stabilityScore||0) >= 50 && (w.learningState||"auto") !== "suspended")
+   .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0))
+   .slice(0,limit);
+}
 
 function buildPracticeQueue(){
-  const queue = [];
-  activeVocabulary().forEach(word => {
-    queue.push(word);
-    if(word.difficultyBoost){
-      queue.push(word);
-      queue.push(word);
-    }
-  });
-  return queue;
+ const maxNew=Number($("maxNewWords")?$("maxNewWords").value:5);
+ const maxCards=getMaxCardsPerSession();
+ const targetUnique=getTargetDistinctWords();
+ const active=activeVocabulary();
+ const reviewPool=reviewVocabulary();
+
+ const confirmation=active.filter(w=>isConfirmationState(w));
+ const critical=active.filter(w=>isCritical(w) && !isConfirmationState(w));
+ const carryOver=active
+  .filter(w=>!w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
+  .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+
+ const dueMasteredAll = reviewPool
+  .filter(w =>
+    (w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered")
+    && isDueForReview(w)
+  )
+  .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0));
+
+ sessionDueReviewsTotal = dueMasteredAll.length;
+ const reviewLimit = getMinReviewsPerSession();
+ const dueMastered = dueMasteredAll.slice(0, reviewLimit);
+
+ const newWords=active.filter(w=>(w.studyState||"new")==="new");
+
+ // Main round slots: confirmations, critical, carry-over and new words.
+ let core=[];
+ core.push(...confirmation);
+ core.push(...critical);
+ core.push(...carryOver);
+ core=[...new Set(core)];
+
+ const freeSlots=Math.max(0,targetUnique-core.length);
+ core.push(...newWords.slice(0,Math.min(maxNew,freeSlots)));
+ core=[...new Set(core)].slice(0,targetUnique);
+
+ function ensureMinimumPhrases(coreList){
+   const minPhrases=getMinPhrasesPerSession();
+   if(minPhrases<=0) return coreList;
+
+   let result=[...coreList];
+   let phraseCount=result.filter(isPhraseCard).length;
+   if(phraseCount>=minPhrases) return result;
+
+   const protectedSet=new Set([...confirmation,...critical]);
+   const candidates=active
+     .filter(w=>isPhraseCard(w) && !result.includes(w) && !protectedSet.has(w))
+     .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+
+   for(const phrase of candidates){
+     if(phraseCount>=minPhrases) break;
+     if(result.length < targetUnique){
+       result.push(phrase);
+       phraseCount++;
+       continue;
+     }
+     let replaceIdx=-1;
+     let replaceScore=-Infinity;
+     result.forEach((w,i)=>{
+       if(protectedSet.has(w)) return;
+       const score=(w.memoryLevel||0) + (isPhraseCard(w)?-1000:0);
+       if(score>replaceScore){ replaceScore=score; replaceIdx=i; }
+     });
+     if(replaceIdx>=0){
+       result[replaceIdx]=phrase;
+       phraseCount++;
+     }
+   }
+   return [...new Set(result)].slice(0,targetUnique);
+ }
+
+ core=ensureMinimumPhrases(core);
+
+
+ // Reviews are extra slots independent from the main distinct-word target.
+ let selected=[...core];
+ dueMastered.forEach(w=>{ if(!selected.includes(w)) selected.push(w); });
+ sessionPlannedReviews=dueMastered.length;
+
+ // Challenge cards remain tiny and optional; do not crowd reviews.
+ retentionChallengeCards(active,Math.max(1,Math.round(maxCards*0.05))).forEach(w=>{
+   if(!selected.includes(w)) selected.push(w);
+ });
+
+ selected = selected.slice(0, Math.max(1, maxCards + reviewLimit));
+
+ selected.forEach(w=>{
+  markSessionWord(w);
+  sessionPlannedWords.add(sessionWordKey(w));
+ });
+
+ selected.forEach(w=>{
+  if(isCritical(w)) setSessionDue(w,0);
+  else if(isConfirmationState(w)) setSessionDue(w,1);
+  else setSessionDue(w,0);
+ });
+
+ return selected;
 }
-function startPractice(){practiceQueue=buildPracticeQueue();correctCount=0;wrongCount=0;nextCard()}
-function nextCard(){revealed=false;$("answerArea").classList.add("hidden");if($("voiceResult"))$("voiceResult").innerHTML="";const card=$("card");card.className="card";if(practiceQueue.length===0){currentCard=null;card.innerHTML=activeVocabulary().length?"Ronda terminada 🎉":"Não há palavras ativas para treinar";updateStats();return}currentCard=practiceQueue[Math.floor(Math.random()*practiceQueue.length)];
+
+window.__wakeLock = window.__wakeLock || null;
+
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator && !window.__wakeLock){
+      window.__wakeLock = await navigator.wakeLock.request('screen');
+      window.__wakeLock.addEventListener?.('release',()=>{window.__wakeLock=null;});
+    }
+  }catch(e){}
+}
+
+async function releaseWakeLock(){
+  try{
+    if(window.__wakeLock){
+      await window.__wakeLock.release();
+      window.__wakeLock=null;
+    }
+  }catch(e){}
+}
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible" && micMasterOn && isAutoMicMode()){
+    requestWakeLock();
+  }
+});
+
+
+function resetRoundRuntimeState(){
+ stopAllMicActivity();
+ currentCard=null;
+ practiceQueue=[];
+ correctCount=0;
+ wrongCount=0;
+ sessionWords=new Set();
+ sessionPlannedWords=new Set();
+ sessionDoneWords=new Set();
+ sessionReviewCount=0;
+ sessionPlannedReviews=0;
+ sessionRoundStreak={};
+ sessionLastCorrect={};
+ window.sessionCardCounter=0;
+ vocabulary.forEach(w=>{
+   w.sessionDueAt=0;
+   w.sessionAppearances=0;
+ });
+}
+
+function startPractice(){
+requestWakeLock();
+takeSessionSnapshot();
+resetRoundRuntimeState();
+practiceQueue=buildPracticeQueue();
+updateSessionProgress();
+nextCard();
+}
+
+function nextCard(){
+if(sessionAnsweredCount()>=getMaxCardsPerSession() || canEndSessionAdaptive()){
+  showSessionComplete();
+  updateSessionProgress();
+  return;
+}
+revealed=false;
+$("answerArea").classList.add("hidden");
+if($("voiceResult"))$("voiceResult").innerHTML="";
+const card=$("card");
+card.className="card";
+window.sessionCardCounter=(window.sessionCardCounter||0)+1;
+
+if(practiceQueue.length===0){
+ showSessionComplete();
+ return;
+}
+
+let due=practiceQueue.map((c,i)=>({c,i})).filter(x=>isViableCard(x.c) && isSessionDue(x.c));
+
+if(!due.length){
+ if(sessionAnsweredCount()>=getMinCardsPerSession()){
+   showSessionComplete();
+   updateSessionProgress();
+   return;
+ }
+ due=practiceQueue.map((c,i)=>({c,i})).sort((a,b)=>(a.c.sessionDueAt||0)-(b.c.sessionDueAt||0)).slice(0,1);
+}
+
+due.sort((a,b)=>{
+ const ac=a.c, bc=b.c;
+ if(isConfirmationState(ac) && !isConfirmationState(bc)) return -1;
+ if(!isConfirmationState(ac) && isConfirmationState(bc)) return 1;
+ if(isCritical(ac) && !isCritical(bc)) return -1;
+ if(!isCritical(ac) && isCritical(bc)) return 1;
+ if(isDueForReview(ac) && !isDueForReview(bc)) return -1;
+ if(!isDueForReview(ac) && isDueForReview(bc)) return 1;
+ return (ac.memoryLevel||0)-(bc.memoryLevel||0);
+});
+
+const pick=due[0];
+currentCard=pick.c;
+markSessionWord(currentCard);
+practiceQueue.splice(pick.i,1);
+currentCard.sessionAppearances=(currentCard.sessionAppearances||0)+1;
+currentCard.lastSeenCardIndex=window.sessionCardCounter;
+
 card.innerHTML=currentCard.pt;
 updateStats();
 renderProgress();
-speakPortuguese(currentCard.pt)
+speakPortuguese(currentCard.pt);
+forceMicStartSoonNoPortuguese();
+
+if(micMasterOn && isAutoMicMode()){
+ scheduleAutoMic();
 }
+}
+
 function revealCard(){
 if(!currentCard)return;
 const card=$("card");
@@ -520,41 +1961,523 @@ if(revealed){
 revealed=true;
 card.className="card revealed";
 const ans=getAllAnswers(currentCard);
-card.innerHTML=`<div class="answer-title">${formatGerman(currentCard.de)}</div><div><strong>Respostas aceites:</strong><br>${ans.join(" · ")}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}<div class="small">Sequência atual: ${currentCard.correctStreak||0}/${MASTER_LIMIT}</div>`;
+card.innerHTML=`<div class="answer-title">${formatGerman(currentCard.de)}</div><div><strong>Respostas aceites:</strong><br>${ans.join(" · ")}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}<div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}% · ${memoryLabel(currentCard)}</div>`;
 renderSynonymButtons(ans);
 $("answerArea").classList.remove("hidden");
 }
 function renderSynonymButtons(ans){$("synonymButtons").innerHTML="";ans.forEach(a=>{const b=document.createElement("button");b.className="success";b.textContent="Acertei: "+a;b.onclick=()=>markCorrect(a);$("synonymButtons").appendChild(b)})}
 
+
+function scoreValue(id,fallback){
+ const el=$(id);
+ return el?Number(el.value):fallback;
+}
+
+function masterThreshold(){
+ return scoreValue("masterThreshold",85);
+}
+function minExposuresToMaster(){
+ return scoreValue("minExposuresToMaster",5);
+}
+function minStreakToMaster(){
+ return scoreValue("minStreakToMaster",3);
+}
+
+function minMemoryLevel(){
+ const el=$("minMemoryLevel");
+ return el?Number(el.value):-50;
+}
+
+function criticalThreshold(){
+ const el=$("criticalThreshold");
+ return el?Number(el.value):0;
+}
+
+function isCritical(word){
+ return (word.memoryLevel||0) < criticalThreshold();
+}
+
+
+function nowTs(){
+ return Date.now();
+}
+
+function daysToMs(days){
+ return days*24*60*60*1000;
+}
+
+function minRepeatDistance(){
+ const el=$("minRepeatDistance");
+ return el?Number(el.value):3;
+}
+
+function initialReviewDays(){
+ const el=$("initialReviewDays");
+ return el?Number(el.value):1;
+}
+
+function reviewGrowthFactor(){
+ const el=$("reviewGrowthFactor");
+ return el?Number(el.value):2;
+}
+
+function isDueForReview(word){
+ return !word.nextReviewAt || word.nextReviewAt <= nowTs();
+}
+
+function scheduleNextReview(word, success=true){
+ word.lastReviewedAt = nowTs();
+ word.totalReviews = (word.totalReviews||0)+1;
+
+ const adaptive = $("adaptiveScheduler") && $("adaptiveScheduler").checked;
+
+ if(success){
+
+   // estabilidade aumenta lentamente com sucesso consistente
+   word.stabilityScore = Math.min(100,
+      (word.stabilityScore||0)
+      + (word.mastered ? 12 : 6)
+      + Math.max(0,(word.correctStreak||0)*1.5)
+   );
+
+   let current = word.reviewIntervalDays || initialReviewDays();
+   let growth = reviewGrowthFactor();
+
+   if(adaptive){
+
+     // palavras difíceis crescem mais lentamente
+     if(word.difficultyBoost) growth *= 0.7;
+
+     // zona crítica recente
+     if((word.memoryLevel||0) < 40) growth *= 0.8;
+
+     // estabilidade elevada acelera crescimento
+     if((word.stabilityScore||0) > 70) growth *= 1.4;
+
+     // muitas falhas históricas abrandam
+     const failPenalty = Math.min(0.4, (word.failCount||0)*0.02);
+     growth *= (1-failPenalty);
+   }
+
+   const next = word.mastered
+      ? Math.min(180, Math.max(initialReviewDays(), current * growth))
+      : initialReviewDays();
+
+   word.reviewIntervalDays = Math.round(next*10)/10;
+   word.nextReviewAt = nowTs() + daysToMs(next);
+
+ }else{
+
+   // esquecimento reduz estabilidade
+   word.stabilityScore = Math.max(0,
+      (word.stabilityScore||0) - 18
+   );
+
+   word.reviewIntervalDays = 0;
+   word.nextReviewAt = nowTs();
+ }
+}
+
+function setSessionDue(word, cardsFromNow){
+ word.sessionDueAt = (window.sessionCardCounter || 0) + cardsFromNow;
+}
+
+function isSessionDue(word){
+ return !word.sessionDueAt || word.sessionDueAt <= (window.sessionCardCounter || 0);
+}
+
+function plannedRepeatDistance(word){
+ if(isCritical(word)) return 1;
+ if(isConfirmationState(word)) return 2;
+
+ const mem = word.memoryLevel || 0;
+ const roundStreak = sessionRoundStreak[sessionWordKey(word)] || 0; // apenas visual/debug
+ const historicalStreak = word.correctStreak || 0; // variável principal do espaçamento
+ const stability = word.stabilityScore || 0;
+
+ let dist = 3;
+ let category = "rápida";
+ let reason = "";
+
+ if(mem < 30){
+   dist = randomSpacing("low");
+   category = "rápida";
+   reason = "Memory <30";
+ }else if(mem < 60){
+   if(historicalStreak <= 2){
+     dist = randomSpacing("low");
+     category = "rápida";
+     reason = "Memory 30-60 + streak histórica <=2";
+   }else{
+     dist = randomSpacing("mid");
+     category = "normal";
+     reason = "Memory 30-60 + streak histórica >2";
+   }
+ }else if(mem < masterThreshold()){
+   if(historicalStreak <= 2){
+     dist = randomSpacing("low");
+     category = "rápida";
+     reason = "Memory 60-domínio + streak histórica <=2";
+   }else if(historicalStreak <= 4){
+     dist = randomSpacing("mid");
+     category = "normal";
+     reason = "Memory 60-domínio + streak histórica 3-4";
+   }else if(historicalStreak <= 8){
+     dist = randomSpacing("high");
+     category = "espaçada";
+     reason = "Memory 60-domínio + streak histórica 5-8";
+   }else{
+     dist = randomSpacing("veryHigh");
+     category = "muito espaçada";
+     reason = "Memory 60-domínio + streak histórica >8";
+   }
+ }else{
+   dist = randomSpacing("veryHigh");
+   category = "muito espaçada";
+   reason = "Memory >= domínio";
+ }
+
+ // Stability ajuda a afastar ligeiramente palavras já consolidadas.
+ if(stability >= 70) dist += 2;
+
+ if(word.difficultyBoost){
+   dist = Math.max(1, dist-2);
+   reason += " · difícil";
+ }
+
+ dist = Math.max(minRepeatDistance(), applySpacingMode(dist));
+
+ // Preparação para Inspector da Palavra.
+ word.lastSpacingCategory = category;
+ word.lastSpacingDistance = dist;
+ word.lastSpacingReason = reason;
+ word.lastSpacingRoundStreak = roundStreak;
+ word.lastSpacingHistoricalStreak = historicalStreak;
+
+ return dist;
+}
+
+function memoryLabel(word){
+ const mem=word.memoryLevel||0;
+ if((word.studyState||"new")==="relearningConfirmation") return "Confirmação";
+ if(word.studyState==="mastered" || word.mastered) return "Dominada";
+ if(isCritical(word)) return "Zona crítica ativa";
+ if(mem>=75) return "Quase dominada";
+ if(mem>=40) return "Aprendizagem";
+ return "Nova/fraca";
+}
+
+
+function isConfirmationState(word){
+ return (word.studyState||"new")==="relearningConfirmation";
+}
+
+
+var DT52_ARTICLES=["der","die","das","den","dem","des","ein","eine","einen","einem","einer"];
+
+function dt52Tokens(s){
+ return normalize(s||"").split(/\s+/).filter(Boolean);
+}
+
+function dt52Lev(a,b){
+ a=a||""; b=b||"";
+ const m=[];
+ for(let i=0;i<=b.length;i++){m[i]=[i]}
+ for(let j=0;j<=a.length;j++){m[0][j]=j}
+ for(let i=1;i<=b.length;i++){
+  for(let j=1;j<=a.length;j++){
+   if(b.charAt(i-1)==a.charAt(j-1)) m[i][j]=m[i-1][j-1];
+   else m[i][j]=Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);
+  }
+ }
+ return m[b.length][a.length];
+}
+
+function dt52Similarity(a,b){
+ const d=dt52Lev(a,b);
+ return 1-d/Math.max(a.length,b.length,1);
+}
+
+function dt52Classify(expected,spoken){
+ const cleanSpoken = normalizeVoice(spoken || "");
+ if(!cleanSpoken) return "memory";
+
+ const e = dt52Tokens(expected);
+ const s = dt52Tokens(spoken);
+
+ // ARTICLE only when article differs and remaining content is almost identical.
+ if(e.length && s.length){
+   const e0=e[0], s0=s[0];
+   if(DT52_ARTICLES.includes(e0) && DT52_ARTICLES.includes(s0) && e0 !== s0){
+     const eRest=e.slice(1).join(" ");
+     const sRest=s.slice(1).join(" ");
+     if(eRest && sRest && dt52Similarity(eRest,sRest) >= 0.85) return "article";
+   }
+ }
+
+ if(hasRequiredArticleMismatch(spoken, expected)){
+   const eRest=e.slice(1).join(" ");
+   const sRest=s.slice(1).join(" ");
+   if(eRest && sRest && dt52Similarity(eRest,sRest) >= 0.85) return "article";
+ }
+
+ // GRAMMAR only when sentence/phrase has real overlap.
+ const expectedSet=new Set(e);
+ const spokenSet=new Set(s);
+ let overlap=0;
+ expectedSet.forEach(w=>{if(spokenSet.has(w)) overlap++;});
+ const overlapRatio=overlap/Math.max(expectedSet.size,1);
+
+ const sameWordsDifferentOrder =
+   e.length===s.length && overlapRatio>=0.8 && e.join(" ")!==s.join(" ");
+
+ let smallGrammarChange=false;
+ if(e.length===s.length && e.length>=2 && overlapRatio>=0.5){
+   let diff=0, shortDiff=false;
+   for(let i=0;i<e.length;i++){
+     if(e[i]!==s[i]){
+       diff++;
+       if(e[i].length<=5 || s[i].length<=5) shortDiff=true;
+     }
+   }
+   smallGrammarChange = diff<=2 && shortDiff;
+ }
+
+ if(hasStrictGrammarMismatch(spoken, expected) && overlapRatio>=0.4) return "grammar";
+ if(sameWordsDifferentOrder || smallGrammarChange) return "grammar";
+
+ return "memory";
+}
+
+function dt52Penalty(type){
+ if(type==="article") return scoreValue("memoryArticleError",-8);
+ if(type==="grammar") return scoreValue("memoryGrammarError",-15);
+ return scoreValue("memoryMemoryError",-25);
+}
+
+
+function clampValue(v,min,max){return Math.max(min,Math.min(max,v));}
+
+function stabilityDeltaFor(type,success,due=false){
+ if(success) return due ? scoreValue("stabilityDueCorrect",10) : scoreValue("stabilityCorrect",4);
+ if(type==="article") return scoreValue("stabilityArticleError",-3);
+ if(type==="grammar") return scoreValue("stabilityGrammarError",-6);
+ return scoreValue("stabilityMemoryError",-12);
+}
+
+function xpDeltaFor(type,success,due=false,skip=false){
+ if(skip) return scoreValue("xpSkip",0);
+ if(success) return due ? scoreValue("xpDueCorrect",20) : scoreValue("xpCorrect",10);
+ if(type==="article") return scoreValue("xpArticleError",4);
+ if(type==="grammar") return scoreValue("xpGrammarError",3);
+ return scoreValue("xpMemoryError",1);
+}
+
+function applyLearningMetrics(word,type,success,skip=false){
+ const due=isDueForReview(word);
+ word.stabilityScore=clampValue((word.stabilityScore||0)+stabilityDeltaFor(type,success,due),0,100);
+ word.xp=Math.max(0,(word.xp||0)+xpDeltaFor(type,success,due,skip));
+}
+
+function setConfirmationState(word){
+ word.studyState="relearningConfirmation";
+ word.mastered=false;
+ word.difficultyBoost=false;
+ word.memoryLevel=Math.max(criticalThreshold()+5, Math.min(80, word.memoryLevel||75));
+}
+
+function recoverFromConfirmation(word){
+ word.studyState="mastered";
+ word.mastered=true;
+ word.difficultyBoost=false;
+ word.memoryLevel=Math.max(75, Math.min(90, word.memoryLevel||75));
+ word.correctStreak=Math.max(word.correctStreak||0, minStreakToMaster());
+}
+
+function failConfirmation(word){
+ word.studyState="learning";
+ word.mastered=false;
+ word.difficultyBoost=true;
+ word.memoryLevel=Math.min(word.memoryLevel||0, criticalThreshold()-10);
+}
+
+
+function updateMemory(word,delta){
+ const minLevel=minMemoryLevel();
+
+ word.memoryLevel=Math.max(minLevel,Math.min(100,(word.memoryLevel||0)+delta));
+
+ // V10.6.16.5:
+ // Single source of truth for mastery: Memory >= configured mastery threshold.
+ if((word.memoryLevel||0) >= masterThreshold()){
+   word.studyState="mastered";
+   word.mastered=true;
+   if((word.learningState||"auto") !== "suspended"){
+     word.learningState = "mastered";
+   }
+ }else{
+   if(word.studyState==="mastered"){
+     word.studyState="learning";
+   }
+   word.mastered=false;
+   if((word.learningState||"auto")==="mastered"){
+     word.learningState="auto";
+   }
+   if(word.studyState!=="new"){
+     word.studyState="learning";
+   }
+ }
+}
+
 function registerCorrect(){
 if(!currentCard)return false;
 const idx=vocabulary.indexOf(currentCard);
+
 if(idx>=0){
- vocabulary[idx].correctStreak=(vocabulary[idx].correctStreak||0)+1;
- vocabulary[idx].wrongStreak=0;
- if(vocabulary[idx].correctStreak>=2){vocabulary[idx].difficultyBoost=false}
- if(vocabulary[idx].correctStreak>=MASTER_LIMIT){vocabulary[idx].mastered=true;vocabulary[idx].difficultyBoost=false;saveVocabulary();return true}
+ const word=vocabulary[idx];
+
+ const wasMastered = !!sessionInitialSnapshot[idx]?.mastered;
+ const wasConfirmation = isConfirmationState(word);
+
+ word.correctStreak=(word.correctStreak||0)+1;
+ word.wrongStreak=0;
+ word.successCount=(word.successCount||0)+1;
+ word.seenCount=(word.seenCount||0)+1;
+ const sessionKey=sessionWordKey(word);
+ sessionRoundStreak[sessionKey]=(sessionRoundStreak[sessionKey]||0)+1;
+ sessionLastCorrect[sessionKey]=true;
+ if(isDueForReview(word) && (word.mastered || word.studyState==="mastered")) sessionReviewCount++;
+
+ if(wasConfirmation){
+   recoverFromConfirmation(word);
+   sessionRecoveredConfirmations++;
+ }else{
+   if(word.studyState==="new"){
+     word.studyState="learning";
+   }
+
+   updateMemory(word,scoreValue("memoryCorrect",10));
+
+   applyLearningMetrics(word,"memory",true,false);
+
+   if(wasMastered && word.mastered){
+     sessionMasteredRemembered++;
+   }
+ }
+
+ if(word.correctStreak>=2){
+   word.difficultyBoost=false;
+ }
+
+ if(word.mastered){
+   scheduleNextReview(word,true);
+ }
+
+ // Se a palavra ficou suficientemente forte nesta ronda, sai da ronda atual.
+ if(shouldRemoveWordFromCurrentRound(word,true)){
+   markSessionWordDone(word);
+   removeAllFromPracticeQueue(word);
+ }else if(!word.mastered && canAddMoreSessionCards()){
+   setSessionDue(word, plannedRepeatDistance(word));
+   practiceQueue.push(word);
+ }
+
  saveVocabulary();
+
+ return word.mastered;
 }
+
 return false;
 }
-function registerWrong(){
+
+
+function registerWrong(type="wrong", spokenText=""){
 if(!currentCard)return;
 const idx=vocabulary.indexOf(currentCard);
+
 if(idx>=0){
-  vocabulary[idx].correctStreak=0;
-  vocabulary[idx].wrongStreak=(vocabulary[idx].wrongStreak||0)+1;
-  vocabulary[idx].mastered=false;
-  if(vocabulary[idx].wrongStreak>=3){vocabulary[idx].difficultyBoost=true}
-  saveVocabulary();
+ const word=vocabulary[idx];
+
+ const wasMastered = !!word.mastered || (word.studyState==="mastered");
+ const wasConfirmation = isConfirmationState(word);
+
+ word.correctStreak=0;
+ word.wrongStreak=(word.wrongStreak||0)+1;
+ word.failCount=(word.failCount||0)+1;
+ word.seenCount=(word.seenCount||0)+1;
+ sessionRoundStreak[sessionWordKey(word)]=0;
+ sessionLastCorrect[sessionWordKey(word)]=false;
+
+ let errorType="memory";
+
+ if(["memory","article","grammar","memory","recognition"].includes(type)){
+   errorType = type;
+ }else if(type==="skip"){
+   errorType="memory";
+ }else if(spokenText){
+   errorType=dt52Classify(word.de, spokenText);
+ }
+
+ if(!word.errorStats){
+   word.errorStats={memory:0,article:0,grammar:0};
+ }
+ if(word.errorStats[errorType]===undefined){
+   word.errorStats[errorType]=0;
+ }
+ word.errorStats[errorType]++;
+
+ if(wasConfirmation){
+   failConfirmation(word);
+   sessionFailedConfirmations++;
+ }else if(wasMastered){
+   setConfirmationState(word);
+   sessionMasteredForgotten++;
+ }else{
+   word.studyState="learning";
+   word.mastered=false;
+
+   updateMemory(word,dt52Penalty(errorType));
+
+   applyLearningMetrics(word,errorType,false,type==="skip");
+
+   if(errorType==="memory" || errorType==="grammar"){
+      word.difficultyBoost=true;
+   }
+ }
+
+ scheduleNextReview(word,false);
+
+ if(canAddMoreSessionCards()){
+   setSessionDue(word, plannedRepeatDistance(word));
+   practiceQueue.push(word);
+ }
+
+ if($("voiceResult")){
+   let reason = "";
+
+   if(errorType==="article"){
+     reason = "erro de artigo";
+   }else if(errorType==="grammar"){
+     reason = "estrutura semelhante com pequena diferença";
+   }else{
+     reason = "estrutura não recuperada / resposta diferente";
+   }
+
+   $("voiceResult").innerHTML += `<div class="small" style="margin-top:6px;color:#b91c1c">Diagnóstico: ${errorType} · ${reason}</div>`;
+ }
+
+ saveVocabulary();
 }
 }
 
-function markKnownBySwipe(){if(!currentCard)return;correctCount++;speakGerman(currentCard.de);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">7 respostas certas consecutivas. Esta palavra já não aparecerá em futuras rondas.</div>`:`<div class="answer-title">Já sei ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Sequência: ${currentCard.correctStreak||0}/${MASTER_LIMIT}</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
-function markCorrect(a){if(!currentCard)return;correctCount++;speakGerman(a);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(a)}</div><div class="small">7 respostas certas consecutivas. Esta palavra já não aparecerá em futuras rondas.</div>`:`<div class="answer-title">Correto ✅</div><div>${formatGerman(a)}</div><div class="small">Sequência: ${currentCard.correctStreak||0}/${MASTER_LIMIT}</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
-function markWrong(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong();$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Errado ❌</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Sequência reiniciada para 0/${MASTER_LIMIT}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
-function skipCard(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong();$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Skip ⏭️</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Sequência reiniciada para 0/${MASTER_LIMIT}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
-function removeCurrentFromQueue(){practiceQueue=practiceQueue.filter(c=>c!==currentCard)}
+function markKnownBySwipe(){if(!currentCard)return;correctCount++;speakGerman(currentCard.de);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`:`<div class="answer-title">Já sei ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
+function markCorrect(a){if(!currentCard)return;correctCount++;speakGerman(a);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(a)}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`:`<div class="answer-title">Correto ✅</div><div>${formatGerman(a)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
+function markWrong(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong("skip","");$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Errado ❌</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
+function skipCard(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong("skip","");$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Skip ⏭️</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
+function removeCurrentFromQueue(){
+  // A carta já foi consumida pela seleção em nextCard().
+  // Mantemos as restantes repetições planeadas para reforço inteligente.
+}
 function progressLevel(streak){
   if(streak >= MASTER_LIMIT) return "done";
   if(streak >= 5) return "high";
@@ -562,39 +2485,132 @@ function progressLevel(streak){
   return "low";
 }
 
+function compactCardMeta(w){
+ if(!w) return "";
+ const bits=[];
+ if(w.difficultyBoost) bits.push("Difícil");
+ const state=(typeof calculatedWordState==="function") ? calculatedWordState(w) : memoryLabel(w);
+ bits.push(state);
+ bits.push(`Mem ${Math.round(w.memoryLevel||0)}%`);
+ return bits.join(" · ");
+}
+
 function renderProgress(){
-  const box = $("progressBox");
+  const box=$("progressBox");
   if(!box || !currentCard){ if(box) box.innerHTML=""; return; }
-  const streak = currentCard.correctStreak || 0;
-  const missing = Math.max(0, MASTER_LIMIT - streak);
-  const level = progressLevel(streak);
-  let dots = "";
-  for(let i=1;i<=MASTER_LIMIT;i++){
-    dots += `<span class="dot ${i<=streak ? "on "+level : ""}">●</span>`;
-  }
-  const hard = currentCard.difficultyBoost ? `<span class="hardBadge">difícil</span>` : "";
-  box.innerHTML = `<div class="progressDots">${dots}</div><div class="progressText">Sequência ${streak}/${MASTER_LIMIT} · ${missing ? "faltam "+missing+" acertos" : "dominada"} ${hard}</div>`;
+  const streak=currentCard.correctStreak||0;
+  const roundStreak=sessionRoundStreak[sessionWordKey(currentCard)]||0;
+  const mem=Math.round(currentCard.memoryLevel||0);
+  const label=memoryLabel(currentCard);
+  const state=currentCard.studyState||"new";
+  const hard=currentCard.difficultyBoost ? `<span class="hardBadge">difícil</span>` : "";
+  let level="low";
+  if(mem>=85) level="done"; else if(mem>=70) level="high"; else if(mem>=40) level="mid";
+  let dots="";
+  const filled=Math.round((mem/100)*MASTER_LIMIT);
+  for(let i=1;i<=MASTER_LIMIT;i++) dots+=`<span class="dot ${i<=filled ? "on "+level : ""}">●</span>`;
+  box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memória ${mem}% ${isCritical(currentCard)?"· zona crítica":""} · streak ronda ${roundStreak} · streak histórica ${streak} · ${state} ${hard}</div>`;
 }
 
 function updateStats(){
+updateSessionProgress();
+
 const mastered=vocabulary.filter(x=>x.mastered).length, active=activeVocabulary().length, hard=vocabulary.filter(x=>x.difficultyBoost&&!x.mastered).length;
-$("stats").textContent=`${active} ativas · ${mastered} dominadas · ${hard} difíceis · ${practiceQueue.length} por acertar nesta ronda · ${correctCount} certas · ${wrongCount} falhadas/skip`;
+$("stats").textContent=`${active} ativas · ${mastered} excluídas · ${hard} difíceis · ${practiceQueue.length} cartões nesta sessão · ${correctCount} certas · ${wrongCount} falhadas/skip`;
 renderProgress();
 }
 
 function renderWordList(){
-const q=normalize($("searchBox")?.value||""),sort=$("sortMode")?.value||"recent";let list=vocabulary.map((item,index)=>({item,index}));
+const q=normalize($("searchBox")?.value||"");
+const sort=$("sortMode")?.value||"recent";
+const filterMode=$("dbFilterMode")?.value||"all";
+
+let list=vocabulary.map((item,index)=>({item,index}));
+
 if(q) list=list.filter(x=>[x.item.pt,x.item.de,(x.item.synonyms||[]).join(" "),x.item.sentence||""].some(v=>normalize(v).includes(q)));
-if(sort==="pt") list.sort((a,b)=>a.item.pt.localeCompare(b.item.pt));else if(sort==="de") list.sort((a,b)=>a.item.de.localeCompare(b.item.de));else if(sort==="mastered") list.sort((a,b)=>(b.item.mastered?1:0)-(a.item.mastered?1:0));else list.sort((a,b)=>(b.item.createdAt||0)-(a.item.createdAt||0));
-$("dbCount").textContent=`${list.length} de ${vocabulary.length} palavras · ${activeVocabulary().length} ativas · ${vocabulary.filter(x=>x.mastered).length} dominadas`;
+
+if(filterMode!=="all"){
+ list=list.filter(x=>{
+   const w=x.item;
+   const state=calculatedWordState(w);
+   if(filterMode==="words") return !isPhraseCard(w);
+   if(filterMode==="phrases") return isPhraseCard(w);
+   if(filterMode==="new") return state==="Nova";
+   if(filterMode==="learning") return state==="Aprendizagem" || state==="Quase dominada";
+   if(filterMode==="critical") return isCritical(w);
+   if(filterMode==="confirmation") return isConfirmationState(w);
+   if(filterMode==="mastered") return state==="Dominada" || state==="Revisão vencida";
+   if(filterMode==="due") return state==="Revisão vencida";
+   return true;
+ });
+}
+
+if(sort==="pt") list.sort((a,b)=>a.item.pt.localeCompare(b.item.pt));
+else if(sort==="de") list.sort((a,b)=>a.item.de.localeCompare(b.item.de));
+else if(sort==="mastered") list.sort((a,b)=>(b.item.mastered?1:0)-(a.item.mastered?1:0));
+else if(sort==="memoryDesc") list.sort((a,b)=>(b.item.memoryLevel||0)-(a.item.memoryLevel||0));
+else if(sort==="memoryAsc") list.sort((a,b)=>(a.item.memoryLevel||0)-(b.item.memoryLevel||0));
+else if(sort==="streakDesc") list.sort((a,b)=>(b.item.correctStreak||0)-(a.item.correctStreak||0));
+else if(sort==="streakAsc") list.sort((a,b)=>(a.item.correctStreak||0)-(b.item.correctStreak||0));
+else if(sort==="stabilityDesc") list.sort((a,b)=>(b.item.stabilityScore||0)-(a.item.stabilityScore||0));
+else if(sort==="stabilityAsc") list.sort((a,b)=>(a.item.stabilityScore||0)-(b.item.stabilityScore||0));
+else if(sort==="dueFirst") list.sort((a,b)=>{
+  const ad=calculatedWordState(a.item)==="Revisão vencida";
+  const bd=calculatedWordState(b.item)==="Revisão vencida";
+  if(ad!==bd) return bd-ad;
+  return (a.item.nextReviewAt||Infinity)-(b.item.nextReviewAt||Infinity);
+});
+else if(sort==="reviewOldest") list.sort((a,b)=>(a.item.nextReviewAt||Infinity)-(b.item.nextReviewAt||Infinity));
+else list.sort((a,b)=>(b.item.createdAt||0)-(a.item.createdAt||0));
+
+const showMem=$("showDbMemory") ? $("showDbMemory").checked : true;
+const showStreak=$("showDbStreak") ? $("showDbStreak").checked : true;
+const showStab=$("showDbStability") ? $("showDbStability").checked : false;
+const showNext=$("showDbNextReview") ? $("showDbNextReview").checked : false;
+
+function dbMetrics(w){
+ const bits=[];
+ if(showMem) bits.push(`Memory ${Math.round(w.memoryLevel||0)}%`);
+ if(showStreak) bits.push(`Streak ${w.correctStreak||0}`);
+ if(showStab) bits.push(`Stability ${Math.round(w.stabilityScore||0)}%`);
+ if(showNext) bits.push(`Rev. ${w.nextReviewAt ? new Date(w.nextReviewAt).toLocaleDateString() : "—"}`);
+ bits.push(calculatedWordState(w));
+ bits.push(cardTypeLabel(w));
+ return bits.join(" · ");
+}
+
+const avgMemory = vocabulary.length ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/vocabulary.length) : 0;
+const dueNow = vocabulary.filter(w=>calculatedWordState(w)==="Revisão vencida").length;
+const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
+
+$("dbCount").textContent=`${list.length} de ${vocabulary.length} itens · ${activeVocabulary().length} em aprendizagem · ${vocabulary.filter(x=>x.mastered).length} dominadas · Memory média ${avgMemory}% · ${dueNow} revisões vencidas · ${criticalNow} críticas`;
+
 if(!list.length){$("wordList").innerHTML="<p class='small'>Sem resultados.</p>";return}
 $("wordList").innerHTML="";
-list.forEach(({item,index})=>{const div=document.createElement("div");div.className="item";div.innerHTML=`<div class="item-title">${item.pt} → ${formatGerman(item.de)}</div>
-<div><span class="pill ${item.mastered?'mastered':''}">${item.mastered?'Dominada':'Ativa'}</span><span class="pill">Sequência ${item.correctStreak||0}/${MASTER_LIMIT}</span><span class="pill">Falhas ${item.wrongStreak||0}/3</span>${item.difficultyBoost&&!item.mastered?'<span class="pill" style="background:#fee2e2;color:#991b1b">Difícil</span>':''}</div>
-${item.synonyms?.length?`<div>${item.synonyms.map(s=>`<span class="pill">${s}</span>`).join("")}</div>`:""}
-${item.sentence?`<div class="small">${item.sentence}</div>`:""}
-<div class="actions"><button class="secondary" data-edit="${index}">Editar</button><button class="danger" data-del="${index}">Apagar</button></div>`;$("wordList").appendChild(div)});
-document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editWord(Number(b.dataset.edit)));document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteWord(Number(b.dataset.del)));
+list.forEach(({item,index})=>{
+const div=document.createElement("div");
+div.className="item";
+const stateLabel=calculatedWordState(item);
+div.innerHTML=`<div class="item-title">${escapeHTML(item.pt)} → ${formatGerman(item.de)}</div>
+<div>
+<span class="pill">${stateLabel}</span>
+<span class="pill">${cardTypeLabel(item)}</span>
+</div>
+<div class="small">${dbMetrics(item)}</div>
+<div>
+<span class="pill">Erro memória ${Number(item.errorStats?.memory||0)}</span>
+<span class="pill">Artigos ${Number(item.errorStats?.article||0)}</span>
+<span class="pill">Gramática ${Number(item.errorStats?.grammar||0)}</span>
+<span class="pill">Próxima revisão ${item.nextReviewAt?new Date(item.nextReviewAt).toLocaleDateString():"—"}</span>
+</div>
+${item.synonyms?.length?`<div>${item.synonyms.map(s=>`<span class="pill">${escapeHTML(s)}</span>`).join("")}</div>`:""}
+${item.sentence?`<div class="small">${escapeHTML(item.sentence)}</div>`:""}
+<div class="actions">${shouldShowInspector()?`<button class="secondary" data-inspect="${index}">ℹ️</button>`:""}<button class="secondary" data-edit="${index}">Editar</button><button class="danger" data-del="${index}">Apagar</button></div>`;
+$("wordList").appendChild(div)
+});
+document.querySelectorAll("[data-inspect]").forEach(b=>b.onclick=()=>openWordInspector(Number(b.dataset.inspect)));
+document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editWord(Number(b.dataset.edit)));
+document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteWord(Number(b.dataset.del)));
 }
 
 function getSeparator(){return $("separator").value==="tab"?"\t":$("separator").value}
@@ -623,7 +2639,14 @@ function importJsonBackup(e){
         correctStreak: w.correctStreak || 0,
         wrongStreak: w.wrongStreak || 0,
         difficultyBoost: !!w.difficultyBoost,
-        mastered: !!w.mastered
+        mastered: !!w.mastered,
+learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
+        memoryLevel: w.memoryLevel || 0,
+        studyState: w.studyState || (w.mastered ? "mastered" : "new"),
+        successCount: w.successCount || 0,
+        failCount: w.failCount || 0,
+        seenCount: w.seenCount || 0,
+        errorStats: w.errorStats || {memory:0,article:0,grammar:0}
       })).filter(w => w.pt && w.de);
 
       saveVocabulary();
@@ -645,42 +2668,105 @@ function loadImportFile(e){const f=e.target.files[0];if(!f)return;const reader=n
 function importBulkText(){
 const text=$("bulkText").value.trim(),sep=getSeparator(),mode=$("importMode") ? $("importMode").value : "add";
 if(!text){alert("Cola texto ou carrega um ficheiro.");return}
-let imported=0,skipped=0,dups=0,updated=0,processed=0,overlapWarnings=0;
-const warningLines=[];
-const skippedLines=[];
+
+let processed=0, imported=0, skipped=0, hardDuplicates=0, updated=0, invalid=0, headerSkipped=0;
+let warningRows=[];
+let ignoredRows=[];
+
 text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach((line,i)=>{
   const p=splitLine(line,sep);
-  if(i===0&&p[0]&&p[0].toLowerCase().includes("portugu")){skipped++;skippedLines.push(`linha ${i+1}: cabeçalho`);return}
-  const pt=(p[0]||"").trim(),de=(p[1]||"").trim(),syn=parseSynonyms(p[2]||""),sentence=(p[3]||"").trim();
-  if(!pt||!de){skipped++;skippedLines.push(`linha ${i+1}: PT ou DE vazio`);return}
-  processed++;
-  const overlap=findOverlapWarnings(pt,de,syn,null);
-  if(overlap.length){
-    overlapWarnings++;
-    warningLines.push(`linha ${i+1}: ${de} — sobreposição com ${overlap.slice(0,3).map(m=>m.item.de).join(", ")}${overlap.length>3?"…":""}`);
+
+  if(i===0&&p[0]&&p[0].toLowerCase().includes("portugu")){
+    headerSkipped++;
+    skipped++;
+    return;
   }
-  const existingIndex=findStrictDuplicateIndex(pt,de,null);
+
+  processed++;
+
+  const pt=(p[0]||"").trim(),de=(p[1]||"").trim(),syn=parseSynonyms(p[2]||""),sentence=(p[3]||"").trim();
+
+  if(!pt||!de){
+    invalid++;
+    skipped++;
+    ignoredRows.push(`Linha ${i+1}: incompleta`);
+    return;
+  }
+
+  const warningMatches=synonymOverlapMatches(pt,de,syn,null);
+  if(warningMatches.length){
+    warningRows.push({
+      line:i+1,
+      pt,
+      de,
+      warnings:warningMatches.map(m=>{
+        const bits=[];
+        if(m.synonymOverlap && m.synonymOverlap.length) bits.push(`sinónimos repetidos: ${m.synonymOverlap.join(", ")}`);
+        if(m.deAsExistingSynonym) bits.push("DE principal já existe como sinónimo");
+        return `${m.item.pt} → ${m.item.de} (${bits.join("; ")})`;
+      })
+    });
+  }
+
+  const existingIndex=findBestExistingIndex(pt,de,syn);
   if(existingIndex>=0){
     if(mode==="update"){
       const old=vocabulary[existingIndex];
-      vocabulary[existingIndex]={...old,pt:pt||old.pt,de:de||old.de,synonyms:mergeSynonyms(old.synonyms,syn),sentence:sentence||old.sentence||"",updatedAt:Date.now()};
+      vocabulary[existingIndex]={
+        ...old,
+        pt: pt || old.pt,
+        de: de || old.de,
+        synonyms: mergeSynonyms(old.synonyms, syn),
+        sentence: sentence || old.sentence || "",
+        updatedAt: Date.now()
+      };
       updated++;
     }else{
-      dups++;skipped++;skippedLines.push(`linha ${i+1}: duplicado real (${de})`);
+      hardDuplicates++;
+      skipped++;
+      ignoredRows.push(`Linha ${i+1}: duplicado real — ${pt} → ${de}`);
     }
     return;
   }
-  vocabulary.push({pt,de,synonyms:syn,sentence,createdAt:Date.now(),updatedAt:Date.now(),sessionDueAt:0,correctStreak:0,wrongStreak:0,difficultyBoost:false,mastered:false,memoryLevel:0,stabilityScore:0,xp:0,studyState:"new",learningState:"auto",successCount:0,failCount:0,seenCount:0,errorStats:{memory:0,article:0,grammar:0}});
+
+  vocabulary.push({
+    pt,de,synonyms:syn,sentence,createdAt:Date.now(),updatedAt:Date.now(),
+    sessionDueAt:0,correctStreak:0,wrongStreak:0,difficultyBoost:false,mastered:false,
+    memoryLevel:0,stabilityScore:0,xp:0,studyState:"new",learningState:"auto",
+    successCount:0,failCount:0,seenCount:0,nextReviewAt:0,lastReviewedAt:0,reviewIntervalDays:0,
+    totalReviews:0,lastSessionSeen:0,errorStats:{memory:0,article:0,grammar:0}
+  });
   imported++;
 });
+
 saveVocabulary();renderWordList();startPractice();
-const warnHtml=warningLines.length?`<details class="compact-details"><summary>${overlapWarnings} aviso(s) de sobreposição por sinónimo</summary>${warningLines.slice(0,30).join("<br>")}${warningLines.length>30?"<br>…":""}</details>`:"";
-const skipHtml=skippedLines.length?`<details class="compact-details"><summary>${skipped} linha(s) ignorada(s)</summary>${skippedLines.slice(0,30).join("<br>")}${skippedLines.length>30?"<br>…":""}</details>`:"";
-$("importResult").innerHTML=`<strong>${processed}</strong> linhas processadas. <strong>${imported}</strong> novas. <strong>${updated}</strong> atualizadas. <strong>${dups}</strong> duplicados reais ignorados. <strong>${skipped}</strong> linhas ignoradas.${warnHtml}${skipHtml}`;
+
+let detail="";
+if(warningRows.length){
+  detail += `<details class="compact-details"><summary>${warningRows.length} linha(s) com avisos de sobreposição</summary><ul class="dup-list">`+
+    warningRows.map(w=>`<li>Linha ${w.line}: ${escapeHTML(w.pt)} → ${escapeHTML(w.de)}<br>${w.warnings.map(escapeHTML).join("<br>")}</li>`).join("")+
+    `</ul></details>`;
+}
+if(ignoredRows.length){
+  detail += `<details class="compact-details"><summary>${ignoredRows.length} linha(s) ignoradas</summary><ul class="dup-list">`+
+    ignoredRows.map(x=>`<li>${escapeHTML(x)}</li>`).join("")+
+    `</ul></details>`;
+}
+
+$("importResult").innerHTML=
+ `<strong>${processed}</strong> linhas processadas. `+
+ `<strong>${imported}</strong> importadas. `+
+ `<strong>${updated}</strong> atualizadas. `+
+ `<strong>${hardDuplicates}</strong> duplicados reais ignorados. `+
+ `<strong>${invalid}</strong> inválidas. `+
+ (headerSkipped?`<strong>${headerSkipped}</strong> cabeçalho ignorado. `:"")+
+ `<strong>${warningRows.length}</strong> com avisos.`+
+ detail;
+
 $("bulkText").value="";$("fileInput").value="";
 }
 function csvEscape(v){v=(v||"").toString();return /[;"\n,]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
-function exportCsv(){const lines=["Português;Alemão;Sinónimos;Frase;Sequência;Falhas;Difícil;Dominada",...vocabulary.map(x=>[x.pt,x.de,(x.synonyms||[]).join(", "),x.sentence||"",x.correctStreak||0,x.wrongStreak||0,x.difficultyBoost?"sim":"não",x.mastered?"sim":"não"].map(csvEscape).join(";"))];downloadFile("vocabulario_deutsch_trainer.csv",lines.join("\n"),"text/csv")}
+function exportCsv(){const lines=["Português;Alemão;Sinónimos;Frase;Memória;Estado;Acertos;Erros;Difícil;Dominada",...vocabulary.map(x=>[x.pt,x.de,(x.synonyms||[]).join(", "),x.sentence||"",Math.round(x.memoryLevel||0),x.studyState||"new",x.successCount||0,x.failCount||0,x.difficultyBoost?"sim":"não",x.mastered?"sim":"não"].map(csvEscape).join(";"))];downloadFile("vocabulario_deutsch_trainer.csv",lines.join("\n"),"text/csv")}
 function exportJson(){downloadFile("vocabulario_deutsch_trainer.json",JSON.stringify(vocabulary,null,2),"application/json")}
 function downloadTemplate(){downloadFile("modelo_vocabulario_alemao.csv","Português;Alemão;Sinónimos;Frase\ncasa;das Haus;Haus, Zuhause;Ich gehe nach Hause.\n","text/csv")}
 function downloadFile(name,content,type){const blob=new Blob([content],{type:type+";charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
@@ -717,15 +2803,195 @@ function maybeShowBackupReminder(){
   if(changes>=25) alert("Tens muitas alterações desde o último backup. Considera criar um backup JSON e guardar no iCloud Drive.");
 }
 
+
+function renderStatsPage(){
+  const total = vocabulary.length;
+  const active = activeVocabulary().length;
+  const mastered = vocabulary.filter(x=>x.mastered || x.learningState==="mastered").length;
+  const suspended = vocabulary.filter(x=>x.learningState==="suspended").length;
+  const focus = vocabulary.filter(x=>x.learningState==="focus").length;
+  const difficult = vocabulary.filter(x=>x.difficultyBoost && !x.mastered).length;
+  const critical = vocabulary.filter(x=>isCritical(x)).length;
+  const confirmation = vocabulary.filter(x=>isConfirmationState(x)).length;
+  const dueNow = vocabulary.filter(x=>isDueForReview(x) && (x.mastered || x.studyState==="mastered")).length;
+
+  const avgMemory = total ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/total) : 0;
+  const avgStability = total ? Math.round(vocabulary.reduce((s,w)=>s+(w.stabilityScore||0),0)/total) : 0;
+  const totalXP = Math.round(vocabulary.reduce((s,w)=>s+(w.xp||0),0));
+
+  const errorTotals = {memory:0,article:0,grammar:0};
+  vocabulary.forEach(w=>{
+    const e=w.errorStats||{};
+    errorTotals.memory += Number(e.memory||0);
+    errorTotals.article += Number(e.article||0);
+    errorTotals.grammar += Number(e.grammar||0);
+  });
+  const totalErrors = errorTotals.memory + errorTotals.article + errorTotals.grammar;
+  const topError = Object.entries(errorTotals).sort((a,b)=>b[1]-a[1])[0];
+
+  const der = vocabulary.filter(x=>/^der\s+/i.test(x.de || "")).length;
+  const die = vocabulary.filter(x=>/^die\s+/i.test(x.de || "")).length;
+  const das = vocabulary.filter(x=>/^das\s+/i.test(x.de || "")).length;
+  const noArticle = vocabulary.filter(x=>! /^(der|die|das)\s+/i.test(x.de || "")).length;
+
+  const hardest = vocabulary
+    .filter(w=>(w.failCount||0)>0 || w.difficultyBoost || isCritical(w))
+    .sort((a,b)=>((b.failCount||0)+(b.errorStats?.grammar||0)+(b.errorStats?.article||0))-((a.failCount||0)+(a.errorStats?.grammar||0)+(a.errorStats?.article||0)))
+    .slice(0,10);
+
+  const weak = vocabulary.slice().sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0)).slice(0,10);
+
+  $("statsPageContent").innerHTML = `
+    <div class="grid2">
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Total:</strong><br>${total}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Aprendizagem:</strong><br>${active}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas manuais:</strong><br>${mastered}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Foco ativo:</strong><br>${focus}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Suspensas:</strong><br>${suspended}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Palavras difíceis:</strong><br>${difficult}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Zona crítica ativa:</strong><br>${critical}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Confirmação:</strong><br>${confirmation}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Revisões vencidas:</strong><br>${dueNow}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Memory média:</strong><br>${avgMemory}%</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Stability média:</strong><br>${avgStability}%</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>XP total:</strong><br>${totalXP}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Principal erro:</strong><br>${topError?topError[0]+" ("+topError[1]+")":"—"}</div>
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Tipos de erro</h3>
+      <span class="pill">Memória: ${errorTotals.memory}</span>
+      <span class="pill">Artigos: ${errorTotals.article}</span>
+      <span class="pill">Gramática: ${errorTotals.grammar}</span>
+      <br><span class="small">Total de erros classificados: ${totalErrors}</span>
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Artigos na base</h3>
+      <span class="pill">der: ${der}</span>
+      <span class="pill">die: ${die}</span>
+      <span class="pill">das: ${das}</span>
+      <span class="pill">sem artigo: ${noArticle}</span>
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Top palavras difíceis</h3>
+      ${hardest.length ? hardest.map(w=>`<div class="item"><strong>${w.pt}</strong> → ${formatGerman(w.de)}<br><span class="small">Memory: ${Math.round(w.memoryLevel||0)}% · Stability: ${Math.round(w.stabilityScore||0)}% · XP: ${Math.round(w.xp||0)} · Erros: ${w.failCount||0}</span></div>`).join("") : "<p class='small'>Ainda não há palavras difíceis.</p>"}
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Memory mais fraca</h3>
+      ${weak.length ? weak.map(w=>`<div class="item"><strong>${w.pt}</strong> → ${formatGerman(w.de)}<br><span class="small">Memory: ${Math.round(w.memoryLevel||0)}% · Estado: ${memoryLabel(w)}</span></div>`).join("") : "<p class='small'>Sem dados.</p>"}
+    </div>
+  `;
+}
+
 function setupSwipe(){const card=$("card");card.addEventListener("click",revealCard);card.addEventListener("touchstart",e=>{if(!currentCard)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;touchCurrentX=touchStartX;isDragging=true},{passive:true});card.addEventListener("touchmove",e=>{if(!isDragging||!currentCard)return;touchCurrentX=e.touches[0].clientX;const dx=touchCurrentX-touchStartX,dy=e.touches[0].clientY-touchStartY;if(Math.abs(dy)>Math.abs(dx))return;if(dx<-30){card.classList.add("swipe-left");card.classList.remove("swipe-right")}else if(dx>30){card.classList.add("swipe-right");card.classList.remove("swipe-left")}else card.classList.remove("swipe-left","swipe-right")},{passive:true});card.addEventListener("touchend",()=>{if(!isDragging||!currentCard)return;const dx=touchCurrentX-touchStartX;isDragging=false;card.classList.remove("swipe-left","swipe-right");if(dx<=-swipeThreshold)markKnownBySwipe();else if(dx>=swipeThreshold)markWrong()});document.addEventListener("keydown",e=>{if(!currentCard)return;if(e.key==="ArrowLeft")markKnownBySwipe();if(e.key==="ArrowRight")markWrong()})}
 
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>switchPage(t.dataset.page));
-$("saveBtn").onclick=saveWord;$("cancelEditBtn").onclick=clearForm;$("wrongBtn").onclick=markWrong;$("skipBtn").onclick=skipCard;$("restartBtn").onclick=startPractice;$("clearBtn").onclick=clearAllWords;$("micBtn").onclick=startVoiceRecognition;$("stopMicBtn").onclick=stopVoiceRecognition;
+$("saveBtn").onclick=saveWord;$("resetLearningBtn").onclick=resetLearningForCurrentEdit;$("cancelEditBtn").onclick=clearForm;$("wrongBtn").onclick=markWrong;$("skipBtn").onclick=skipCard;$("restartBtn").onclick=startPractice;$("clearBtn").onclick=clearAllWords;$("micBtn").onclick=startVoiceRecognition;
 $("fileInput").onchange=loadImportFile;$("jsonInput").onchange=importJsonBackup;$("importBtn").onclick=importBulkText;$("templateBtn").onclick=downloadTemplate;$("exportCsvBtn").onclick=exportCsv;$("exportJsonBtn").onclick=exportJson;$("backupJsonBtn").onclick=createBackupJson;$("backupCsvBtn").onclick=createBackupCsv;
 ["ptWord","deWord","synonyms"].forEach(id=>$(id).addEventListener("input",renderDuplicateWarning));
 $("searchBox").oninput=renderWordList;$("sortMode").onchange=renderWordList;
+
+["dbFilterMode","showDbMemory","showDbStreak","showDbStability","showDbNextReview","showWordInspector"].forEach(id=>{
+ const el=$(id);
+ if(el) el.addEventListener("change",renderWordList);
+});
+
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
-loadVocabulary();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
+
+function normalizeMasteredMemory(){
+ let changed=false;
+ const threshold = (typeof masterThreshold==="function") ? masterThreshold() : 85;
+
+ vocabulary.forEach(w=>{
+   const isMastered =
+     !!w.mastered ||
+     (w.studyState||"new")==="mastered" ||
+     (w.learningState||"auto")==="mastered";
+
+   if(isMastered && (w.memoryLevel||0) < threshold){
+     w.memoryLevel = threshold;
+     changed=true;
+   }
+
+   if((w.learningState||"auto")==="mastered"){
+     w.mastered=true;
+     w.studyState="mastered";
+   }
+ });
+
+ if(changed){
+   localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
+ }
+ return changed;
+}
+
+function migrateLegacyWords(){
+ if(!Array.isArray(vocabulary)) return false;
+
+ let changed=false;
+ const now=Date.now();
+
+ vocabulary.forEach((w,idx)=>{
+   if(!w.learningState){
+     w.learningState = w.mastered ? "mastered" : "auto";
+     changed=true;
+   }
+
+   if(w.mastered || w.learningState==="mastered"){
+      if(!w.nextReviewAt){
+         // spread legacy reviews across the next 12-48h to avoid flooding one session
+         const hours = 12 + Math.floor(Math.random()*36);
+         w.nextReviewAt = now + (hours * 60 * 60 * 1000);
+         changed=true;
+      }
+
+      if((w.memoryLevel||0)===0){
+        w.memoryLevel = 80;
+        changed=true;
+      }
+
+      if((w.stabilityScore||0)===0){
+        w.stabilityScore = 60;
+        changed=true;
+      }
+
+      if((w.xp||0)===0){
+        w.xp = 25;
+        changed=true;
+      }
+
+      if(!w.reviewIntervalDays){
+        w.reviewIntervalDays = 1;
+        changed=true;
+      }
+   }
+
+   if(!w.errorStats){
+     w.errorStats={memory:0,article:0,grammar:0};
+     changed=true;
+   }
+
+   // clean old experimental bucket
+   if(w.errorStats && w.errorStats.pronunciation){
+     w.errorStats.memory = Number(w.errorStats.memory||0) + Number(w.errorStats.pronunciation||0);
+     delete w.errorStats.pronunciation;
+     changed=true;
+   }
+ });
+
+ if(changed){
+   saveVocabulary();
+ }
+
+ return changed;
+}
+
+
+loadVocabulary();
+migrateLegacyWords();normalizeMasteredMemory();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
 </script>
 </body>
 </html>

@@ -728,10 +728,50 @@ if(page==="statsPage") renderStatsPage();
 if(page==="train") resumePractice();
 }
 
+function primaryDuplicateMatches(pt,de,ignoreIndex=null){
+ const ptNorm=normalize(pt);
+ const deNorm=normalize(de);
+ const matches=[];
+ vocabulary.forEach((item,i)=>{
+   if(ignoreIndex!==null && i===ignoreIndex) return;
+   const ptSame=!!ptNorm && normalize(item.pt)===ptNorm;
+   const deSame=!!deNorm && normalize(item.de)===deNorm;
+   if(ptSame || deSame){
+     matches.push({index:i,item,ptSame,deSame,hardDuplicate:true});
+   }
+ });
+ return matches;
+}
+
+function synonymOverlapMatches(pt,de,synonyms,ignoreIndex=null){
+ const incomingSyn=(synonyms||[]).map(normalize).filter(Boolean);
+ const deNorm=normalize(de);
+ const matches=[];
+ vocabulary.forEach((item,i)=>{
+   if(ignoreIndex!==null && i===ignoreIndex) return;
+   const existingTerms=allGermanTerms(item);
+   const synonymOverlap=incomingSyn.filter(x=>existingTerms.includes(x));
+   const deAsExistingSynonym=!!deNorm && (item.synonyms||[]).map(normalize).includes(deNorm);
+   if(synonymOverlap.length || deAsExistingSynonym){
+     matches.push({index:i,item,synonymOverlap,deAsExistingSynonym,warningOnly:true});
+   }
+ });
+ return matches;
+}
+
 function findDuplicates(pt,de,synonyms,ignoreIndex=null){
-const incoming=[de,...synonyms].map(normalize).filter(Boolean),ptNorm=normalize(pt);let matches=[];
-vocabulary.forEach((item,i)=>{if(ignoreIndex!==null&&i===ignoreIndex)return;const existingTerms=allGermanTerms(item);const germanOverlap=incoming.filter(x=>existingTerms.includes(x));const ptSame=ptNorm&&normalize(item.pt)===ptNorm;if(ptSame||germanOverlap.length)matches.push({index:i,item,ptSame,germanOverlap})});
-return matches;
+ const hard=primaryDuplicateMatches(pt,de,ignoreIndex);
+ const warnings=synonymOverlapMatches(pt,de,synonyms,ignoreIndex);
+ const byIndex=new Map();
+ hard.forEach(m=>byIndex.set(m.index,{...m,germanOverlap:[]}));
+ warnings.forEach(m=>{
+   const existing=byIndex.get(m.index)||{index:m.index,item:m.item,ptSame:false,deSame:false,germanOverlap:[]};
+   existing.warningOnly=!existing.hardDuplicate;
+   existing.germanOverlap=[...(existing.germanOverlap||[]),...(m.synonymOverlap||[])];
+   existing.deAsExistingSynonym=!!m.deAsExistingSynonym;
+   byIndex.set(m.index,existing);
+ });
+ return [...byIndex.values()];
 }
 function mergeSynonyms(existing, incoming){
   const combined = [...(existing || []), ...(incoming || [])];
@@ -742,7 +782,7 @@ function mergeSynonyms(existing, incoming){
   return unique;
 }
 function findBestExistingIndex(pt,de,synonyms){
-  const matches = findDuplicates(pt,de,synonyms,null);
+  const matches = primaryDuplicateMatches(pt,de,null);
   if(!matches.length) return -1;
   const exactDe = normalize(de);
   const exactPt = normalize(pt);
@@ -753,9 +793,12 @@ function renderDuplicateWarning(){
 const editIndex=$("editIndex").value===""?null:Number($("editIndex").value);
 const matches=findDuplicates($("ptWord").value,$("deWord").value,parseSynonyms($("synonyms").value),editIndex),box=$("duplicateNotice");
 if(!matches.length){box.className="";box.innerHTML="";return matches}
-box.className="notice warn";box.innerHTML="<strong>Possível duplicado encontrado:</strong><ul class='dup-list'>"+matches.map(m=>`<li>${m.item.pt} → ${m.item.de}${m.germanOverlap.length?`<br>Termos repetidos: ${m.germanOverlap.join(", ")}`:""}${m.ptSame?"<br>Mesmo significado em português.":""}</li>`).join("")+"</ul><span class='small'>Podes guardar mesmo assim.</span>";return matches;
+const hard=matches.filter(m=>m.hardDuplicate || m.ptSame || m.deSame);
+box.className="notice warn";
+box.innerHTML="<strong>"+(hard.length?"Duplicado real encontrado:":"Sobreposição de termos encontrada:")+"</strong><ul class='dup-list'>"+
+matches.map(m=>`<li>${m.item.pt} → ${m.item.de}${m.ptSame?"<br>Mesmo significado em português.":""}${m.deSame?"<br>Mesma resposta alemã principal.":""}${m.germanOverlap&&m.germanOverlap.length?`<br>Sinónimos/termos repetidos: ${m.germanOverlap.join(", ")}`:""}${m.deAsExistingSynonym?"<br>A resposta alemã principal já existe como sinónimo noutra carta.":""}${!(m.hardDuplicate||m.ptSame||m.deSame)?"<br><span class='small'>Aviso apenas — não bloqueia a importação.</span>":""}</li>`).join("")+
+"</ul><span class='small'>Duplicados reais são PT/DE principal igual. Sobreposição de sinónimos é apenas aviso.</span>";return matches;
 }
-
 
 function resetLearningForCurrentEdit(){
  const editVal=$("editIndex").value;
@@ -2268,12 +2311,46 @@ function loadImportFile(e){const f=e.target.files[0];if(!f)return;const reader=n
 function importBulkText(){
 const text=$("bulkText").value.trim(),sep=getSeparator(),mode=$("importMode") ? $("importMode").value : "add";
 if(!text){alert("Cola texto ou carrega um ficheiro.");return}
-let imported=0,skipped=0,dups=0,updated=0;
+
+let processed=0, imported=0, skipped=0, hardDuplicates=0, updated=0, invalid=0, headerSkipped=0;
+let warningRows=[];
+let ignoredRows=[];
+
 text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach((line,i)=>{
   const p=splitLine(line,sep);
-  if(i===0&&p[0]&&p[0].toLowerCase().includes("portugu")){skipped++;return}
+
+  if(i===0&&p[0]&&p[0].toLowerCase().includes("portugu")){
+    headerSkipped++;
+    skipped++;
+    return;
+  }
+
+  processed++;
+
   const pt=(p[0]||"").trim(),de=(p[1]||"").trim(),syn=parseSynonyms(p[2]||""),sentence=(p[3]||"").trim();
-  if(!pt||!de){skipped++;return}
+
+  if(!pt||!de){
+    invalid++;
+    skipped++;
+    ignoredRows.push(`Linha ${i+1}: incompleta`);
+    return;
+  }
+
+  const warningMatches=synonymOverlapMatches(pt,de,syn,null);
+  if(warningMatches.length){
+    warningRows.push({
+      line:i+1,
+      pt,
+      de,
+      warnings:warningMatches.map(m=>{
+        const bits=[];
+        if(m.synonymOverlap && m.synonymOverlap.length) bits.push(`sinónimos repetidos: ${m.synonymOverlap.join(", ")}`);
+        if(m.deAsExistingSynonym) bits.push("DE principal já existe como sinónimo");
+        return `${m.item.pt} → ${m.item.de} (${bits.join("; ")})`;
+      })
+    });
+  }
+
   const existingIndex=findBestExistingIndex(pt,de,syn);
   if(existingIndex>=0){
     if(mode==="update"){
@@ -2288,17 +2365,47 @@ text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach((line,i)=>{
       };
       updated++;
     }else{
-      dups++;
+      hardDuplicates++;
       skipped++;
+      ignoredRows.push(`Linha ${i+1}: duplicado real — ${pt} → ${de}`);
     }
     return;
   }
-  vocabulary.push({pt,de,synonyms:syn,sentence,createdAt:Date.now(),updatedAt:Date.now(),
-sessionDueAt:0,correctStreak:0,wrongStreak:0,difficultyBoost:false,mastered:false});
+
+  vocabulary.push({
+    pt,de,synonyms:syn,sentence,createdAt:Date.now(),updatedAt:Date.now(),
+    sessionDueAt:0,correctStreak:0,wrongStreak:0,difficultyBoost:false,mastered:false,
+    memoryLevel:0,stabilityScore:0,xp:0,studyState:"new",learningState:"auto",
+    successCount:0,failCount:0,seenCount:0,nextReviewAt:0,lastReviewedAt:0,reviewIntervalDays:0,
+    totalReviews:0,lastSessionSeen:0,errorStats:{memory:0,article:0,grammar:0}
+  });
   imported++;
 });
+
 saveVocabulary();renderWordList();startPractice();
-$("importResult").innerHTML=`<strong>${imported}</strong> novas. <strong>${updated}</strong> atualizadas. <strong>${dups}</strong> duplicados ignorados. <strong>${skipped}</strong> linhas ignoradas.`;
+
+let detail="";
+if(warningRows.length){
+  detail += `<details class="compact-details"><summary>${warningRows.length} linha(s) com avisos de sobreposição</summary><ul class="dup-list">`+
+    warningRows.map(w=>`<li>Linha ${w.line}: ${escapeHTML(w.pt)} → ${escapeHTML(w.de)}<br>${w.warnings.map(escapeHTML).join("<br>")}</li>`).join("")+
+    `</ul></details>`;
+}
+if(ignoredRows.length){
+  detail += `<details class="compact-details"><summary>${ignoredRows.length} linha(s) ignoradas</summary><ul class="dup-list">`+
+    ignoredRows.map(x=>`<li>${escapeHTML(x)}</li>`).join("")+
+    `</ul></details>`;
+}
+
+$("importResult").innerHTML=
+ `<strong>${processed}</strong> linhas processadas. `+
+ `<strong>${imported}</strong> importadas. `+
+ `<strong>${updated}</strong> atualizadas. `+
+ `<strong>${hardDuplicates}</strong> duplicados reais ignorados. `+
+ `<strong>${invalid}</strong> inválidas. `+
+ (headerSkipped?`<strong>${headerSkipped}</strong> cabeçalho ignorado. `:"")+
+ `<strong>${warningRows.length}</strong> com avisos.`+
+ detail;
+
 $("bulkText").value="";$("fileInput").value="";
 }
 function csvEscape(v){v=(v||"").toString();return /[;"\n,]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
