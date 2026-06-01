@@ -2259,6 +2259,54 @@ document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteWord(Numb
 function getSeparator(){return $("separator").value==="tab"?"\t":$("separator").value}
 function splitLine(line,sep){let r=[],c="",q=false;for(let i=0;i<line.length;i++){const ch=line[i],n=line[i+1];if(ch=='"'&&n=='"'){c+='"';i++}else if(ch=='"'){q=!q}else if(ch===sep&&!q){r.push(c.trim());c=""}else c+=ch}r.push(c.trim());return r}
 
+function forceMicStartSoonNoPortuguese(){
+ // Compatibilidade: nextCard() chama esta função.
+ // Se a leitura portuguesa estiver desligada, tenta preparar o microfone rapidamente.
+ try{
+   if(typeof scheduleAutoMicFastIfNoPortuguese==="function") scheduleAutoMicFastIfNoPortuguese();
+ }catch(e){
+   console.warn("forceMicStartSoonNoPortuguese fallback:", e);
+ }
+}
+
+function normalizeImportedWord(w){
+ const mastered=!!w.mastered || (w.learningState==="mastered") || (w.studyState==="mastered");
+ return {
+   ...w,
+   pt: w.pt || "",
+   de: w.de || "",
+   synonyms: Array.isArray(w.synonyms) ? w.synonyms : parseSynonyms(w.synonyms || ""),
+   sentence: w.sentence || "",
+   correctStreak: Number(w.correctStreak||0),
+   wrongStreak: Number(w.wrongStreak||0),
+   difficultyBoost: !!w.difficultyBoost,
+   mastered,
+   learningState: w.learningState || (mastered ? "mastered" : "auto"),
+   memoryLevel: Number(w.memoryLevel ?? (mastered ? masterThreshold() : 0)),
+   stabilityScore: Number(w.stabilityScore ?? (mastered ? 60 : 0)),
+   xp: Number(w.xp||0),
+   studyState: w.studyState || (mastered ? "mastered" : "new"),
+   successCount: Number(w.successCount||0),
+   failCount: Number(w.failCount||0),
+   seenCount: Number(w.seenCount||0),
+   nextReviewAt: Number(w.nextReviewAt||0),
+   lastReviewedAt: Number(w.lastReviewedAt||0),
+   reviewIntervalDays: Number(w.reviewIntervalDays||0),
+   totalReviews: Number(w.totalReviews||0),
+   lastSessionSeen: Number(w.lastSessionSeen||0),
+   sessionDueAt: 0,
+   errorStats: w.errorStats || {memory:0,article:0,grammar:0},
+   createdAt: Number(w.createdAt||Date.now()),
+   updatedAt: Number(w.updatedAt||Date.now())
+ };
+}
+
+function safeRefreshAfterImport(){
+ try{ renderWordList(); }catch(e){ console.error("Erro ao atualizar BD após importação:", e); }
+ try{ startPractice(); }catch(e){ console.error("Erro ao reiniciar treino após importação:", e); }
+ try{ updateBackupInfo(); }catch(e){ console.error("Erro ao atualizar backup info:", e); }
+}
+
 function importJsonBackup(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -2266,41 +2314,49 @@ function importJsonBackup(e){
   const reader = new FileReader();
 
   reader.onload = function(ev){
+    let resultBox=$("importResult");
     try{
       const data = JSON.parse(ev.target.result);
       const words = Array.isArray(data) ? data : data.vocabulary;
 
       if(!Array.isArray(words)){
-        throw new Error("invalid");
+        throw new Error("O ficheiro JSON não contém uma lista de vocabulário válida.");
       }
 
-      vocabulary = words.map(w => ({
-        pt: w.pt || "",
-        de: w.de || "",
-        synonyms: w.synonyms || [],
-        sentence: w.sentence || "",
-        correctStreak: w.correctStreak || 0,
-        wrongStreak: w.wrongStreak || 0,
-        difficultyBoost: !!w.difficultyBoost,
-        mastered: !!w.mastered,
-learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
-        memoryLevel: w.memoryLevel || 0,
-        studyState: w.studyState || (w.mastered ? "mastered" : "new"),
-        successCount: w.successCount || 0,
-        failCount: w.failCount || 0,
-        seenCount: w.seenCount || 0,
-        errorStats: w.errorStats || {memory:0,article:0,grammar:0}
-      })).filter(w => w.pt && w.de);
+      const normalized = words
+        .map(normalizeImportedWord)
+        .filter(w => w.pt && w.de);
 
+      if(!normalized.length){
+        throw new Error("O ficheiro não contém palavras válidas com português e alemão.");
+      }
+
+      vocabulary = normalized;
       saveVocabulary();
-      renderWordList();
-      startPractice();
 
-      $("importResult").innerHTML = "<strong>Backup JSON importado com sucesso.</strong>";
+      if(resultBox){
+        resultBox.innerHTML =
+          `<strong>Backup JSON importado com sucesso.</strong><br>`+
+          `${normalized.length} palavras importadas. `+
+          `${words.length-normalized.length} entradas ignoradas por estarem incompletas.`;
+      }
+
+      safeRefreshAfterImport();
     }catch(err){
-      $("importResult").innerHTML = "<strong>JSON inválido.</strong>";
+      console.error("Erro ao importar JSON:", err);
+      if(resultBox){
+        resultBox.innerHTML =
+          `<strong>JSON inválido ou incompatível.</strong><br>`+
+          `<span class="small">${escapeHTML(err.message || String(err))}</span>`;
+      }
     }
 
+    e.target.value = "";
+  };
+
+  reader.onerror = function(){
+    const resultBox=$("importResult");
+    if(resultBox) resultBox.innerHTML = "<strong>Não consegui ler o ficheiro JSON.</strong>";
     e.target.value = "";
   };
 
@@ -2309,8 +2365,13 @@ learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
 
 function loadImportFile(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=x=>{$("bulkText").value=x.target.result;$("importResult").innerHTML="Ficheiro carregado. Clica em Importar."};reader.readAsText(f,"UTF-8")}
 function importBulkText(){
+const resultBox=$("importResult");
+try{
 const text=$("bulkText").value.trim(),sep=getSeparator(),mode=$("importMode") ? $("importMode").value : "add";
-if(!text){alert("Cola texto ou carrega um ficheiro.");return}
+if(!text){
+  if(resultBox) resultBox.innerHTML="<strong>Nada para importar.</strong><br><span class='small'>Cola texto ou carrega um ficheiro.</span>";
+  return;
+}
 
 let processed=0, imported=0, skipped=0, hardDuplicates=0, updated=0, invalid=0, headerSkipped=0;
 let warningRows=[];
@@ -2372,17 +2433,17 @@ text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach((line,i)=>{
     return;
   }
 
-  vocabulary.push({
+  vocabulary.push(normalizeImportedWord({
     pt,de,synonyms:syn,sentence,createdAt:Date.now(),updatedAt:Date.now(),
     sessionDueAt:0,correctStreak:0,wrongStreak:0,difficultyBoost:false,mastered:false,
     memoryLevel:0,stabilityScore:0,xp:0,studyState:"new",learningState:"auto",
     successCount:0,failCount:0,seenCount:0,nextReviewAt:0,lastReviewedAt:0,reviewIntervalDays:0,
     totalReviews:0,lastSessionSeen:0,errorStats:{memory:0,article:0,grammar:0}
-  });
+  }));
   imported++;
 });
 
-saveVocabulary();renderWordList();startPractice();
+saveVocabulary();
 
 let detail="";
 if(warningRows.length){
@@ -2396,17 +2457,34 @@ if(ignoredRows.length){
     `</ul></details>`;
 }
 
-$("importResult").innerHTML=
- `<strong>${processed}</strong> linhas processadas. `+
- `<strong>${imported}</strong> importadas. `+
- `<strong>${updated}</strong> atualizadas. `+
- `<strong>${hardDuplicates}</strong> duplicados reais ignorados. `+
- `<strong>${invalid}</strong> inválidas. `+
- (headerSkipped?`<strong>${headerSkipped}</strong> cabeçalho ignorado. `:"")+
- `<strong>${warningRows.length}</strong> com avisos.`+
- detail;
+if(resultBox){
+ resultBox.innerHTML=
+  `<strong>Importação concluída.</strong><br>`+
+  `<strong>${processed}</strong> linhas processadas. `+
+  `<strong>${imported}</strong> importadas. `+
+  `<strong>${updated}</strong> atualizadas. `+
+  `<strong>${hardDuplicates}</strong> duplicados reais ignorados. `+
+  `<strong>${invalid}</strong> inválidas. `+
+  (headerSkipped?`<strong>${headerSkipped}</strong> cabeçalho ignorado. `:"")+
+  `<strong>${warningRows.length}</strong> com avisos.`+
+  detail;
+}
 
-$("bulkText").value="";$("fileInput").value="";
+if(imported>0 || updated>0){
+  $("bulkText").value="";
+  if($("fileInput")) $("fileInput").value="";
+}
+
+safeRefreshAfterImport();
+
+}catch(err){
+ console.error("Erro ao importar vocabulário:", err);
+ if(resultBox){
+   resultBox.innerHTML =
+    `<strong>Erro na importação.</strong><br>`+
+    `<span class="small">${escapeHTML(err.message || String(err))}</span>`;
+ }
+}
 }
 function csvEscape(v){v=(v||"").toString();return /[;"\n,]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function exportCsv(){const lines=["Português;Alemão;Sinónimos;Frase;Memória;Estado;Acertos;Erros;Difícil;Dominada",...vocabulary.map(x=>[x.pt,x.de,(x.synonyms||[]).join(", "),x.sentence||"",Math.round(x.memoryLevel||0),x.studyState||"new",x.successCount||0,x.failCount||0,x.difficultyBoost?"sim":"não",x.mastered?"sim":"não"].map(csvEscape).join(";"))];downloadFile("vocabulario_deutsch_trainer.csv",lines.join("\n"),"text/csv")}
