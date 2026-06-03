@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.7.1.3</title>
+<title>Deutsch Trainer V10.8.1.7.1</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,7 +23,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 .progressBox{text-align:center;margin:10px 0 14px}
 .progressDots{font-size:22px;letter-spacing:3px;margin:4px 0}
 .dot{color:#d1d5db}.dot.on.low{color:#dc2626}.dot.on.mid{color:#f59e0b}.dot.on.high{color:#1f6feb}.dot.on.done{color:#16a34a}
-.progressText{font-size:14px;color:#555}.hardBadge{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px;font-size:13px;margin-left:4px}.voiceOk{color:#166534;font-weight:bold}.voiceBad{color:#991b1b;font-weight:bold}.voiceListening{color:#1f6feb;font-weight:bold}.micOn{background:#16a34a!important;color:white}
+.progressText{font-size:14px;color:#555}.hardBadge{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:999px;padding:3px 8px;font-size:13px;margin-left:4px}.verifyBadge{display:inline-block;background:#fef3c7;color:#92400e;border-radius:999px;padding:3px 8px;font-size:13px;margin-left:4px}.voiceOk{color:#166534;font-weight:bold}.voiceBad{color:#991b1b;font-weight:bold}.voiceListening{color:#1f6feb;font-weight:bold}.micOn{background:#16a34a!important;color:white}
 .micControlRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .micStatusDot{display:inline-block;width:18px;height:18px;border-radius:50%;background:#dc2626;border:2px solid #fff;box-shadow:0 0 0 1px #ccc}
 .micStatusDot.off{background:#dc2626}
@@ -40,6 +40,19 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 .range-row select{margin-top:4px}
 .range-sep{font-weight:bold;padding-bottom:12px;color:#555}
 .config-note{background:#f8fafc;border-radius:10px;padding:10px;margin:10px 0}
+
+/* V10.8.1.2 mobile compact tabs */
+.tabs{gap:6px;justify-content:flex-start;overflow-x:auto;padding-bottom:4px}
+.tab{padding:10px 12px;min-width:auto;font-size:15px;white-space:nowrap}
+.mode-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.mode-row label{margin:0;font-size:14px;white-space:nowrap}
+.mode-row select{margin:0;flex:1;padding:8px 10px;font-size:16px}
+.mode-row .small{font-size:13px;margin:0}
+@media (max-width: 430px){
+  .tab{padding:9px 10px;font-size:14px}
+  .box{padding:14px}
+  #trainingModeInfo{display:none}
+}
 </style>
 <style id="v1071-ux-css">
 .db-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
@@ -53,19 +66,30 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.7.1.3</h1>
+<h1>Deutsch Trainer V10.8.1.7.1</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
 <button class="tab" data-page="statsPage">Estatísticas</button>
 <button class="tab" data-page="add">Adicionar</button>
 <button class="tab" data-page="db">Base de dados</button>
-<button class="tab" data-page="config">Configuração</button>
+<button class="tab" data-page="config">Config</button>
 </div>
 </header>
 
 <section id="page-train">
 <div class="box">
 <h2>Treino</h2>
+<div class="mode-row">
+  <label>Modo</label>
+  <select id="trainingMode">
+      <option value="normal">Normal</option>
+      <option value="intense">Intenso</option>
+      <option value="hard">Difíceis</option>
+      <option value="phrases">Frases</option>
+      <option value="reviews">Revisões</option>
+    </select>
+  <span class="small" id="trainingModeInfo">Treino equilibrado.</span>
+</div>
 <div class="stats hidden" id="stats">0 palavras guardadas</div>
 <div id="sessionProgressInfo" class="small" style="margin:8px 0;text-align:center;color:#475569">0 respondidas · ~0 restantes</div>
 <div id="card" class="card">Adiciona palavras para começar</div>
@@ -126,7 +150,17 @@ Foco ativo = prioridade temporária.
 Dominada manual = revisão ocasional.
 Suspensa = removida do treino.
 </p>
+
+<details class="compact-details">
+<summary>⚙️ Métricas manuais</summary>
+<label>Memory (0-100)</label>
+<input id="manualMemoryLevel" type="number" min="-100" max="100" step="1">
+<label>Stability (0-100)</label>
+<input id="manualStabilityScore" type="number" min="0" max="100" step="1">
+<p class="small">Permite corrigir cartas com Memory/Stability inflacionadas ou desalinhadas.</p>
+</details>
 <div id="duplicateNotice"></div>
+
 <button class="primary" id="saveBtn">Guardar palavra</button>
 <button class="secondary" id="resetLearningBtn">Resetar aprendizagem desta palavra</button>
 <button class="secondary" id="cancelEditBtn">Cancelar edição</button>
@@ -144,11 +178,17 @@ Suspensa = removida do treino.
 </select>
 <p class="small">Para atualizar artigos nos sinónimos, usa o modo <strong>Atualizar palavras existentes</strong>.</p>
 <label>Carregar ficheiro CSV/TXT</label><input type="file" id="fileInput" accept=".csv,.txt">
-<label>Importar backup JSON</label><input type="file" id="jsonInput" accept=".json">
-<label>Ou colar aqui</label><textarea id="bulkText" rows="8"></textarea>
+<label>Ou colar vocabulário aqui</label><textarea id="bulkText" rows="8"></textarea>
 <button class="primary" id="importBtn">Importar vocabulário</button>
 <button class="secondary" id="templateBtn">Descarregar modelo CSV</button>
 <div id="importResult" class="small"></div>
+
+<details class="compact-details">
+<summary>Importar backup JSON</summary>
+<p class="small">Usa apenas para restaurar um backup JSON exportado pela app. Para listas de vocabulário, usa a caixa acima.</p>
+<input type="file" id="jsonInput" accept=".json,application/json">
+<div id="jsonImportResult" class="small"></div>
+</details>
 </div>
 </section>
 
@@ -193,6 +233,8 @@ Suspensa = removida do treino.
 <div class="actions">
 <button class="secondary" id="exportCsvBtn">Exportar CSV</button>
 <button class="secondary" id="exportJsonBtn">Exportar JSON</button>
+<button class="secondary" onclick="runDatabaseIntegrityCheck(true)">Verificar base de dados</button>
+
 <button class="danger" id="clearBtn">Apagar tudo</button>
 </div>
 <p class="small" id="dbCount"></p>
@@ -202,7 +244,7 @@ Suspensa = removida do treino.
 
 <section id="page-config" class="hidden">
 <div class="box">
-<h2>Configuração</h2>
+<h2>Config</h2>
 <p class="small">As secções estão recolhidas por defeito para reduzir o scroll. Abre apenas o grupo que queres ajustar.</p>
 
 <details class="config-section">
@@ -277,6 +319,9 @@ Suspensa = removida do treino.
 <select id="minStreakToMaster"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
 <label>Nível necessário para dominar</label>
 <input id="masterThreshold" type="number" value="85">
+<label>Stability mínima para dominar</label>
+<input id="stabilityMasterThreshold" type="number" value="50">
+<p class="small">A partir da V10.8.0, uma carta só domina automaticamente quando Memory e Stability atingem os limites configurados.</p>
 <label>Memória mínima</label>
 <select id="minMemoryLevel"><option value="-30">-30</option><option value="-40">-40</option><option value="-50" selected>-50</option><option value="-60">-60</option></select>
 <label>Limiar da zona crítica</label>
@@ -320,6 +365,54 @@ Suspensa = removida do treino.
 </details>
 
 <details class="config-section">
+<summary><b>Modos de treino e multiplicadores</b></summary>
+<div class="section-body">
+<p class="small">Cada modo pode usar uma pool diferente, um número alvo de cartas e multiplicadores próprios para Memory, Stability, XP e espaçamento.</p>
+
+<h3>Palavras distintas alvo por modo</h3>
+<label>Normal — palavras distintas alvo</label><input id="modeNormalCards" type="number" value="12">
+<label>Intenso — palavras distintas alvo</label><input id="modeIntenseCards" type="number" value="10">
+<label>Difíceis — palavras distintas alvo</label><input id="modeHardCards" type="number" value="8">
+<label>Frases — palavras distintas alvo</label><input id="modePhrasesCards" type="number" value="20">
+<label>Revisões — palavras distintas alvo</label><input id="modeReviewsCards" type="number" value="20">
+<p class="small">Estas opções controlam palavras distintas/pool inicial. O limite absoluto de cartas continua a controlar o máximo de apresentações na ronda.</p>
+
+<h3>Composição dos modos</h3>
+<label>Intenso — % palavras novas</label><input id="modeIntenseNewPct" type="number" value="50">
+<label>Frases — % não dominadas</label><input id="modePhrasesActivePct" type="number" value="80">
+<label>Revisões — % vencidas antes de próximas</label><input id="modeReviewsDuePct" type="number" value="100">
+
+<h3>Multiplicadores por modo</h3>
+<div class="small config-note">Memory/Stability/XP multiplicam os pontos definidos em “Avançado”. Spacing multiplica a distância entre repetições dentro da ronda.</div>
+
+<label>Normal — Memory</label><input id="modeNormalMemoryMult" type="number" step="0.05" value="1">
+<label>Normal — Stability</label><input id="modeNormalStabilityMult" type="number" step="0.05" value="1">
+<label>Normal — XP</label><input id="modeNormalXpMult" type="number" step="0.05" value="1">
+<label>Normal — Espaçamento</label><input id="modeNormalSpacingMult" type="number" step="0.05" value="1">
+
+<label>Intenso — Memory</label><input id="modeIntenseMemoryMult" type="number" step="0.05" value="1">
+<label>Intenso — Stability</label><input id="modeIntenseStabilityMult" type="number" step="0.05" value="0.25">
+<label>Intenso — XP</label><input id="modeIntenseXpMult" type="number" step="0.05" value="1">
+<label>Intenso — Espaçamento</label><input id="modeIntenseSpacingMult" type="number" step="0.05" value="0.5">
+
+<label>Difíceis — Memory</label><input id="modeHardMemoryMult" type="number" step="0.05" value="1">
+<label>Difíceis — Stability</label><input id="modeHardStabilityMult" type="number" step="0.05" value="0.15">
+<label>Difíceis — XP</label><input id="modeHardXpMult" type="number" step="0.05" value="1">
+<label>Difíceis — Espaçamento</label><input id="modeHardSpacingMult" type="number" step="0.05" value="0.5">
+
+<label>Frases — Memory</label><input id="modePhrasesMemoryMult" type="number" step="0.05" value="1">
+<label>Frases — Stability</label><input id="modePhrasesStabilityMult" type="number" step="0.05" value="1.2">
+<label>Frases — XP</label><input id="modePhrasesXpMult" type="number" step="0.05" value="1">
+<label>Frases — Espaçamento</label><input id="modePhrasesSpacingMult" type="number" step="0.05" value="1">
+
+<label>Revisões — Memory</label><input id="modeReviewsMemoryMult" type="number" step="0.05" value="0.7">
+<label>Revisões — Stability</label><input id="modeReviewsStabilityMult" type="number" step="0.05" value="1.5">
+<label>Revisões — XP</label><input id="modeReviewsXpMult" type="number" step="0.05" value="0.5">
+<label>Revisões — Espaçamento</label><input id="modeReviewsSpacingMult" type="number" step="0.05" value="1">
+</div>
+</details>
+
+<details class="config-section">
 <summary><b>Backup</b></summary>
 <div class="section-body">
 <p class="small">Exporta um backup JSON e guarda-o manualmente em iCloud Drive, OneDrive ou no iPhone.</p>
@@ -343,11 +436,13 @@ Suspensa = removida do treino.
 <label>Stability: erro de artigo</label><input id="stabilityArticleError" type="number" value="-3">
 <label>Stability: erro gramatical</label><input id="stabilityGrammarError" type="number" value="-6">
 <label>Stability: erro de memória</label><input id="stabilityMemoryError" type="number" value="-12">
+<label>Stability: erro revisão vencida</label><input id="stabilityDueMemoryError" type="number" value="-18">
 <label>XP: acerto normal</label><input id="xpCorrect" type="number" value="10">
 <label>XP: acerto revisão vencida</label><input id="xpDueCorrect" type="number" value="20">
 <label>XP: erro de artigo</label><input id="xpArticleError" type="number" value="4">
 <label>XP: erro gramatical</label><input id="xpGrammarError" type="number" value="3">
 <label>XP: erro de memória</label><input id="xpMemoryError" type="number" value="1">
+<label>XP: erro revisão vencida</label><input id="xpDueMemoryError" type="number" value="1">
 <label>XP: skip/swipe direita</label><input id="xpSkip" type="number" value="0">
 </div>
 </details>
@@ -379,7 +474,17 @@ if(x.xp===undefined)x.xp=0;
 if(x.learningState===undefined)x.learningState = x.mastered ? "mastered" : "auto";
 if(x.totalReviews===undefined)x.totalReviews=0;
 if(x.lastSessionSeen===undefined)x.lastSessionSeen=0;
-if(x.errorStats===undefined)x.errorStats={memory:0,article:0,grammar:0}})}
+if(x.retentionCheckPending===undefined)x.retentionCheckPending=false;
+if(x.retentionCheckSuccesses===undefined)x.retentionCheckSuccesses=0;
+if(x.retentionCheckFails===undefined)x.retentionCheckFails=0;
+if(x.manualMastered===undefined)x.manualMastered=false;
+if(x.bestSpacing===undefined)x.bestSpacing=0;
+if(x.lastFailedSpacing===undefined)x.lastFailedSpacing=0;
+if(x.lastTestedSpacing===undefined)x.lastTestedSpacing=0;
+if(x.presentedSpacing===undefined)x.presentedSpacing=0;
+if(x.presentedSpacingSource===undefined)x.presentedSpacingSource="";
+if(x.fragilityDebt===undefined)x.fragilityDebt=0;
+if(x.errorStats===undefined)x.errorStats={memory:0,article:0,grammar:0};migrateLegacyMasteryState(x)})}
 function saveVocabulary(){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
   changesSinceBackup++;
@@ -389,9 +494,7 @@ function saveVocabulary(){
 function parseSynonyms(t){return t?t.split(",").map(s=>s.trim()).filter(Boolean):[]}
 function getAllAnswers(c){const a=[c.de,...(c.synonyms||[])],u=[];for(const x of a)if(x&&!u.some(y=>normalize(y)===normalize(x)))u.push(x);return u}
 function allGermanTerms(c){return getAllAnswers(c).map(normalize)}
-function activeVocabulary(){
-return vocabulary.filter(x => (x.learningState||"auto") !== "suspended" && (x.learningState||"auto") !== "mastered" && !x.mastered);
-}
+function activeVocabulary(){ return vocabulary.filter(x => isLearningCandidate(x)); }
 
 function reviewVocabulary(){
 return vocabulary.filter(x => (x.learningState||"auto") !== "suspended");
@@ -803,6 +906,7 @@ function stopAllMicActivity(){
 function tryStartListening(autoStarted=false){
   if(!micMasterOn && autoStarted) return;
   if(isListening) return;
+  requestWakeLock();
 
   if(!$("voiceEnabled") || !$("voiceEnabled").checked){
     $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz desativado na configuração.</span>";
@@ -1038,6 +1142,7 @@ function startVoiceRecognition(autoStarted=false){
     }
 
     micMasterOn = true;
+    requestWakeLock();
     resetAutoMicSilentTimer();
     setMicButton(true);
     setMicStatus("preparing", "preparação");
@@ -1085,14 +1190,37 @@ if(page==="statsPage") renderStatsPage();
 if(page==="train") resumePractice();
 }
 
+function canonicalTextForDuplicate(text){
+ return normalize(text||"")
+   .replace(/[.!?;:]+$/g,"")
+   .replace(/[.,!?;:“”„"]/g," ")
+   .replace(/\s+/g," ")
+   .trim();
+}
+
+function canonicalGermanForDuplicate(text){
+ const base=canonicalTextForDuplicate(text);
+ const tokens=base.split(/\s+/).filter(Boolean);
+ const articles=["der","die","das","den","dem","des","ein","eine","einen","einem","einer"];
+ // Só remove artigo inicial em termos curtos, para evitar transformar "Das hängt..." em "hängt...".
+ if(tokens.length>0 && tokens.length<=3 && articles.includes(tokens[0])){
+   return tokens.slice(1).join(" ");
+ }
+ return base;
+}
+
+function allGermanTermsForDuplicate(c){
+ return getAllAnswers(c).map(canonicalGermanForDuplicate).filter(Boolean);
+}
+
 function primaryDuplicateMatches(pt,de,ignoreIndex=null){
- const ptNorm=normalize(pt);
- const deNorm=normalize(de);
+ const ptNorm=canonicalTextForDuplicate(pt);
+ const deNorm=canonicalGermanForDuplicate(de);
  const matches=[];
  vocabulary.forEach((item,i)=>{
    if(ignoreIndex!==null && i===ignoreIndex) return;
-   const ptSame=!!ptNorm && normalize(item.pt)===ptNorm;
-   const deSame=!!deNorm && normalize(item.de)===deNorm;
+   const ptSame=!!ptNorm && canonicalTextForDuplicate(item.pt)===ptNorm;
+   const deSame=!!deNorm && canonicalGermanForDuplicate(item.de)===deNorm;
    if(ptSame || deSame){
      matches.push({index:i,item,ptSame,deSame,hardDuplicate:true});
    }
@@ -1101,14 +1229,15 @@ function primaryDuplicateMatches(pt,de,ignoreIndex=null){
 }
 
 function synonymOverlapMatches(pt,de,synonyms,ignoreIndex=null){
- const incomingSyn=(synonyms||[]).map(normalize).filter(Boolean);
- const deNorm=normalize(de);
+ const incomingSyn=(synonyms||[]).map(canonicalGermanForDuplicate).filter(Boolean);
+ const deNorm=canonicalGermanForDuplicate(de);
  const matches=[];
  vocabulary.forEach((item,i)=>{
    if(ignoreIndex!==null && i===ignoreIndex) return;
-   const existingTerms=allGermanTerms(item);
+   const existingTerms=allGermanTermsForDuplicate(item);
    const synonymOverlap=incomingSyn.filter(x=>existingTerms.includes(x));
-   const deAsExistingSynonym=!!deNorm && (item.synonyms||[]).map(normalize).includes(deNorm);
+   const existingSynonyms=(item.synonyms||[]).map(canonicalGermanForDuplicate).filter(Boolean);
+   const deAsExistingSynonym=!!deNorm && existingSynonyms.includes(deNorm);
    if(synonymOverlap.length || deAsExistingSynonym){
      matches.push({index:i,item,synonymOverlap,deAsExistingSynonym,warningOnly:true});
    }
@@ -1134,17 +1263,22 @@ function mergeSynonyms(existing, incoming){
   const combined = [...(existing || []), ...(incoming || [])];
   const unique = [];
   combined.forEach(value => {
-    if(value && !unique.some(x => normalize(x) === normalize(value))) unique.push(value);
+    if(value && !unique.some(x => canonicalGermanForDuplicate(x) === canonicalGermanForDuplicate(value))) unique.push(value);
   });
   return unique;
 }
 function findBestExistingIndex(pt,de,synonyms){
   const matches = primaryDuplicateMatches(pt,de,null);
   if(!matches.length) return -1;
-  const exactDe = normalize(de);
-  const exactPt = normalize(pt);
-  const exact = matches.find(m => normalize(m.item.de) === exactDe || normalize(m.item.pt) === exactPt);
-  return exact ? exact.index : matches[0].index;
+  const deNorm = canonicalGermanForDuplicate(de);
+  const ptNorm = canonicalTextForDuplicate(pt);
+
+  // Prioridade: DE principal igual. Evita atualizar a carta errada se PT e DE colidirem com itens diferentes.
+  const exactDe = matches.find(m => canonicalGermanForDuplicate(m.item.de) === deNorm);
+  if(exactDe) return exactDe.index;
+
+  const exactPt = matches.find(m => canonicalTextForDuplicate(m.item.pt) === ptNorm);
+  return exactPt ? exactPt.index : matches[0].index;
 }
 function renderDuplicateWarning(){
 const editIndex=$("editIndex").value===""?null:Number($("editIndex").value);
@@ -1154,7 +1288,7 @@ const hard=matches.filter(m=>m.hardDuplicate || m.ptSame || m.deSame);
 box.className="notice warn";
 box.innerHTML="<strong>"+(hard.length?"Duplicado real encontrado:":"Sobreposição de termos encontrada:")+"</strong><ul class='dup-list'>"+
 matches.map(m=>`<li>${m.item.pt} → ${m.item.de}${m.ptSame?"<br>Mesmo significado em português.":""}${m.deSame?"<br>Mesma resposta alemã principal.":""}${m.germanOverlap&&m.germanOverlap.length?`<br>Sinónimos/termos repetidos: ${m.germanOverlap.join(", ")}`:""}${m.deAsExistingSynonym?"<br>A resposta alemã principal já existe como sinónimo noutra carta.":""}${!(m.hardDuplicate||m.ptSame||m.deSame)?"<br><span class='small'>Aviso apenas — não bloqueia a importação.</span>":""}</li>`).join("")+
-"</ul><span class='small'>Duplicados reais são PT/DE principal igual. Sobreposição de sinónimos é apenas aviso.</span>";return matches;
+"</ul><span class='small'>Duplicados reais são PT/DE principal igual, comparados sem pontuação final e com artigos curtos normalizados. Sobreposição de sinónimos é apenas aviso.</span>";return matches;
 }
 
 function resetLearningForCurrentEdit(){
@@ -1162,7 +1296,7 @@ function resetLearningForCurrentEdit(){
  if(editVal===""){showNotice("saveNotice","Guarda primeiro a palavra antes de resetar aprendizagem.","warn");return}
  const idx=Number(editVal), w=vocabulary[idx];
  if(!w)return;
- w.memoryLevel=0;w.stabilityScore=0;w.xp=0;w.studyState="new";w.learningState="auto";w.mastered=false;w.difficultyBoost=false;
+ w.memoryLevel=0;w.stabilityScore=0;w.xp=0;w.bestSpacing=0;w.lastFailedSpacing=0;w.lastTestedSpacing=0;w.presentedSpacing=0;w.presentedSpacingSource="";w.fragilityDebt=0;w.studyState="new";w.learningState="auto";w.mastered=false;w.manualMastered=false;w.retentionCheckPending=false;w.retentionCheckSuccesses=0;w.retentionCheckFails=0;w.difficultyBoost=false;
  w.correctStreak=0;w.wrongStreak=0;w.sessionDueAt=0;w.nextReviewAt=0;w.reviewIntervalDays=0;
  saveVocabulary();showNotice("saveNotice","Aprendizagem resetada para esta palavra.","ok");renderWordList();startPractice();
 }
@@ -1174,7 +1308,12 @@ const syn=parseSynonyms($("synonyms").value);
 const sent=$("sentence").value.trim();
 const editVal=$("editIndex").value;
 const learningState=$("learningState") ? $("learningState").value : "auto";
-const mastered=learningState==="mastered";
+const manualMemoryInput=$("manualMemoryLevel") ? $("manualMemoryLevel").value.trim() : "";
+const manualMemoryValue=manualMemoryInput==="" ? null : Math.max(minMemoryLevel ? minMemoryLevel() : -50,Math.min(100,Number(manualMemoryInput)));
+const manualStabilityInput=$("manualStabilityScore") ? $("manualStabilityScore").value.trim() : "";
+const manualStabilityValue=manualStabilityInput==="" ? null : Math.max(0,Math.min(100,Number(manualStabilityInput)));
+const manualMastered=learningState==="mastered";
+const mastered=manualMastered;
 
 if(!pt||!de){
   showNotice("saveNotice","Preenche pelo menos português e alemão.","error");
@@ -1190,11 +1329,23 @@ const item={
   updatedAt:Date.now(),
   learningState,
   mastered,
+  manualMastered,
+  retentionCheckPending: manualMastered ? false : (previous.retentionCheckPending||false),
+  retentionCheckSuccesses: manualMastered ? 0 : (previous.retentionCheckSuccesses||0),
+  retentionCheckFails: manualMastered ? 0 : (previous.retentionCheckFails||0),
   correctStreak: mastered ? Math.max(previous.correctStreak||0, 3) : (previous.correctStreak||0),
   wrongStreak: mastered ? 0 : (previous.wrongStreak||0),
   difficultyBoost: mastered ? false : (previous.difficultyBoost||false),
-  memoryLevel: mastered ? Math.max(previous.memoryLevel||0,85) : (previous.memoryLevel??0),
-  stabilityScore: mastered ? Math.max(previous.stabilityScore||0,75) : (previous.stabilityScore??0),
+  memoryLevel: manualMemoryValue!==null ? manualMemoryValue : (mastered ? Math.max(previous.memoryLevel||0,masterThreshold ? masterThreshold() : 85) : (previous.memoryLevel??0)),
+  memoryManualAdjusted: manualMemoryValue!==null ? true : (previous.memoryManualAdjusted||false),
+  stabilityScore: manualStabilityValue!==null ? manualStabilityValue : (mastered ? Math.max(previous.stabilityScore||0,stabilityMasterThreshold ? stabilityMasterThreshold() : 50) : (previous.stabilityScore??0)),
+  stabilityManualAdjusted: manualStabilityValue!==null ? true : (previous.stabilityManualAdjusted||false),
+  bestSpacing: previous.bestSpacing||0,
+  lastFailedSpacing: previous.lastFailedSpacing||0,
+  lastTestedSpacing: previous.lastTestedSpacing||0,
+  presentedSpacing: previous.presentedSpacing||0,
+  presentedSpacingSource: previous.presentedSpacingSource||"",
+  fragilityDebt: clampFragilityDebt(previous.fragilityDebt||0),
   xp: previous.xp||0,
   studyState: mastered ? "mastered" : (previous.studyState||"new"),
   successCount: previous.successCount||0,
@@ -1247,6 +1398,8 @@ $("deWord").value="";
 $("synonyms").value="";
 $("sentence").value="";
 if($("learningState")) $("learningState").value="auto";
+if($("manualMemoryLevel")) $("manualMemoryLevel").value="";
+if($("manualStabilityScore")) $("manualStabilityScore").value="";
 $("duplicateNotice").className="";
 $("duplicateNotice").innerHTML="";
 }
@@ -1261,6 +1414,8 @@ $("deWord").value=item.de||"";
 $("synonyms").value=(item.synonyms||[]).join(", ");
 $("sentence").value=item.sentence||"";
 if($("learningState")) $("learningState").value=item.learningState || (item.mastered ? "mastered" : "auto");
+if($("manualMemoryLevel")) $("manualMemoryLevel").value=Math.round(item.memoryLevel||0);
+if($("manualStabilityScore")) $("manualStabilityScore").value=Math.round(item.stabilityScore||0);
 switchPage("add");
 renderDuplicateWarning();
 setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);
@@ -1282,6 +1437,7 @@ function takeSessionSnapshot(){
   vocabulary.forEach((w,i)=>{
     sessionInitialSnapshot[i] = {
       memoryLevel: w.memoryLevel || 0,
+        memoryManualAdjusted: !!w.memoryManualAdjusted,
       mastered: !!w.mastered,
 learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
       studyState: w.studyState || "new",
@@ -1311,7 +1467,7 @@ function sessionSummaryHtml(){
   });
 
   const avgMemory = vocabulary.length ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/vocabulary.length) : 0;
-const dueNow = vocabulary.filter(w=>isDueForReview(w) && (w.mastered || w.studyState==="mastered")).length;
+const dueNow = vocabulary.filter(w=>isDueForReview(w) && isMasteredForScheduling(w)).length;
 const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
 
   return `
@@ -1337,6 +1493,7 @@ const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
 }
 
 function showSessionComplete(){
+  releaseWakeLock();
   currentCard=null;
   const card=$("card");
   card.className="card revealed";
@@ -1425,8 +1582,8 @@ function isViableCard(word){
  if(!word) return false;
  if(isCritical(word)) return true;
  if(isConfirmationState(word)) return true;
- if((word.studyState||"new")==="learning") return true;
- if(isDueForReview(word) && (word.mastered || word.studyState==="mastered")) return true;
+ if(isLearningCandidate(word)) return true;
+ if(isDueForReview(word) && isMasteredForScheduling(word)) return true;
  return isSessionDue(word);
 }
 
@@ -1520,6 +1677,7 @@ function updateSessionProgress(){
 
    el.innerHTML += `<details id="roundDetails" class="compact-details"${detailsOpen ? " open" : ""}>
      <summary>Estado da ronda</summary>
+     Modo: ${modeLabel()}<br>
      Respondidas: ${sessionAnsweredCount()}<br>
      Excluídas: ${excluded}/${total}<br>
      Cartas em espera: ${queue}<br>
@@ -1539,7 +1697,7 @@ function shouldRemoveWordFromCurrentRound(word,lastSuccess){
  // V10.6.14:
  // Excluída da ronda = atingiu o critério pedagógico principal de domínio.
  // A streak da ronda NÃO exclui; serve apenas para espaçamento.
- return (word.memoryLevel||0) >= masterThreshold();
+ return isManualMastered(word) || isAutoMasteryReady(word);
 }
 
 function removeAllFromPracticeQueue(word){
@@ -1622,10 +1780,14 @@ function shouldShowInspector(){
 
 function calculatedWordState(w){
  if(!w) return "—";
+ if(isSuspendedCard(w)) return "Suspensa";
  if(isCritical(w)) return "Zona crítica";
- if(isConfirmationState(w)) return "Confirmação";
- if((w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered") && isDueForReview(w)) return "Revisão vencida";
- if(w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered" || (w.memoryLevel||0)>=masterThreshold()) return "Dominada";
+ if(isConfirmationState(w)) return "Verificação de retenção";
+ if(isFragile(w)) return "Frágil";
+ if(isResistant(w)) return "Resistente";
+ if(isMasteredForScheduling(w) && isDueForReview(w)) return "Revisão vencida";
+ if(isManualMastered(w)) return "Dominada manual";
+ if(isAutoMasteryReady(w)) return "Dominada";
  if((w.memoryLevel||0) >= Math.max(0, masterThreshold()-10)) return "Quase dominada";
  if((w.studyState||"new")==="new" && (w.seenCount||0)===0) return "Nova";
  return "Aprendizagem";
@@ -1689,11 +1851,14 @@ function openWordInspector(index){
  const technical=`<details style="margin-top:10px">
 <summary><b>Detalhes técnicos</b></summary>
 <div class="small" style="margin-top:8px;line-height:1.55">
-Categoria spacing: ${w.lastSpacingCategory||"—"}<br>
-Distância sorteada: ${w.lastSpacingDistance||"—"}<br>
-Motivo spacing: ${w.lastSpacingReason||"—"}<br>
+Modo treino atual: ${modeLabel()}<br>
+Categoria do próximo spacing: ${w.lastSpacingCategory||"—"}<br>
+Distância planeada: ${w.lastSpacingDistance||"—"}<br>
+Motivo do próximo spacing: ${w.lastSpacingReason||"—"}<br>
 Streak usada no spacing: ${w.lastSpacingHistoricalStreak ?? w.correctStreak ?? 0}<br>
 Streak ronda no último cálculo: ${w.lastSpacingRoundStreak ?? roundStreak}<br>
+Último ganho como revisão vencida: ${w.lastMetricDueApplied ? "sim" : "não"}<br>
+Último tipo de métrica: ${w.lastMetricType || "—"}<br>
 sessionDueAt: ${w.sessionDueAt||"—"}<br>
 lastSeenCardIndex: ${w.lastSeenCardIndex||"—"}
 </div>
@@ -1706,9 +1871,15 @@ lastSeenCardIndex: ${w.lastSeenCardIndex||"—"}
 <b>Estado:</b> ${calculatedWordState(w)}<br>
 <b>Tipo:</b> ${cardTypeLabel(w)}<br>
 <b>Memory:</b> ${Math.round(w.memoryLevel||0)}%<br>
-<b>Domínio:</b> ${threshold}%${missing>0 ? ` · faltam ${Math.round(missing)}%` : ""}<br>
-<b>Stability:</b> ${Math.round(w.stabilityScore||0)}%<br>
+<b>Domínio Memory:</b> ${threshold}%${missing>0 ? ` · faltam ${Math.round(missing)}%` : ""}<br>
+<b>Stability:</b> ${Math.round(w.stabilityScore||0)}% · mínimo ${stabilityMasterThreshold()}%<br>
+${isConfirmationState(w) ? `<b>Verificação:</b> ${(w.retentionCheckSuccesses||0)}/2 sucessos<br>` : ""}
 <b>XP:</b> ${Math.round(w.xp||0)}<br>
+<b>Melhor espaçamento superado:</b> ${displayBestSpacing(w)} · barreira normal ${normalSpacingThreshold()}<br><b>Tag:</b> ${visualTagLabel(w)}<br><b>Barreira:</b> ${barrierSummary(w)}<br>
+<b>Espaçamento testado nesta resposta:</b> ${Math.round(w.presentedSpacing||0)} · fonte: ${sourceLabel(w.presentedSpacingSource)}<br>
+<b>Próximo espaçamento planeado:</b> ${Math.round(w.lastTestedSpacing||0)} · fonte: ${sourceLabel(w.lastTestedSpacingSource)}<br>
+<b>Último espaçamento falhado:</b> ${Math.round(w.lastFailedSpacing||0)}<br>
+<b>Fragility debt:</b> ${clampFragilityDebt(w.fragilityDebt||0).toFixed(2)} / 2<br><b>Classificação:</b> ${classificationLabel(w)}<br><b>Diagnóstico:</b> ${difficultyDiagnosis(w)}<br>\n${w.memoryManualAdjusted ? "<b>Memory ajustada manualmente:</b> sim<br>" : ""}${w.stabilityManualAdjusted ? "<b>Stability ajustada manualmente:</b> sim<br>" : ""}
 <b>Streak histórica:</b> ${w.correctStreak||0}<br>
 <b>Streak ronda:</b> ${roundStreak}<br>
 <hr>
@@ -1733,92 +1904,216 @@ function retentionChallengeCards(active, limit=3){
    .slice(0,limit);
 }
 
+function currentTrainingMode(){
+ const el=$("trainingMode");
+ return el ? el.value : "normal";
+}
+
+function modePrefix(mode=currentTrainingMode()){
+ return {
+   normal:"modeNormal",
+   intense:"modeIntense",
+   hard:"modeHard",
+   phrases:"modePhrases",
+   reviews:"modeReviews"
+ }[mode] || "modeNormal";
+}
+
+function modeNumber(suffix,fallback,mode=currentTrainingMode()){
+ const el=$(modePrefix(mode)+suffix);
+ return el ? Number(el.value) : fallback;
+}
+
+function modeCards(mode=currentTrainingMode()){
+ return modeNumber("Cards", getTargetDistinctWords(), mode);
+}
+
+function modeMemoryMult(mode=currentTrainingMode()){
+ return modeNumber("MemoryMult",1,mode);
+}
+
+function modeStabilityMult(mode=currentTrainingMode()){
+ return modeNumber("StabilityMult",1,mode);
+}
+
+function modeXpMult(mode=currentTrainingMode()){
+ return modeNumber("XpMult",1,mode);
+}
+
+function modeSpacingMult(mode=currentTrainingMode()){
+ return modeNumber("SpacingMult",1,mode);
+}
+
+function modeLabel(mode=currentTrainingMode()){
+ return {
+   normal:"Normal",
+   intense:"Intenso",
+   hard:"Difíceis",
+   phrases:"Frases",
+   reviews:"Revisões"
+ }[mode] || "Normal";
+}
+
+function updateTrainingModeInfo(){
+ const el=$("trainingModeInfo");
+ if(!el) return;
+ const mode=currentTrainingMode();
+ const texts={
+   normal:"Treino equilibrado com novas, aprendizagem, frases mínimas e revisões.",
+   intense:"Poucas cartas, 50/50 novas e aprendizagem, repetições compactas.",
+   hard:"Foco em críticas, difíceis e cartas com erros recentes.",
+   phrases:"Treino só de frases, priorizando não dominadas.",
+   reviews:"Revisões vencidas e próximas para validar retenção."
+ };
+ el.textContent=texts[mode]||texts.normal;
+}
+
+function isHardCandidate(w){
+ if(!w || isSuspendedCard(w) || isMasteredForScheduling(w)) return false;
+ const errors=(w.errorStats?.memory||0)+(w.errorStats?.grammar||0)+(w.errorStats?.article||0);
+ return !!w.difficultyBoost || isCritical(w) || errors>=1 || (w.wrongStreak||0)>0 || (w.memoryLevel||0)<30 || (w.stabilityScore||0)<30;
+}
+
+function upcomingReviewCandidates(pool,limit){
+ return pool
+  .filter(w=>isReviewCandidateOrMissingDate(w) && w.nextReviewAt && !isDueForReview(w))
+  .sort((a,b)=>(a.nextReviewAt||Infinity)-(b.nextReviewAt||Infinity))
+  .slice(0,limit);
+}
+
+function takeBalanced(list,limit){
+ return [...new Set(list)].slice(0,Math.max(0,limit));
+}
+
+
 function buildPracticeQueue(){
+ const mode=currentTrainingMode();
+ updateTrainingModeInfo();
+
  const maxNew=Number($("maxNewWords")?$("maxNewWords").value:5);
  const maxCards=getMaxCardsPerSession();
- const targetUnique=getTargetDistinctWords();
+ const targetUnique=modeCards(mode);
  const active=activeVocabulary();
  const reviewPool=reviewVocabulary();
 
  const confirmation=active.filter(w=>isConfirmationState(w));
  const critical=active.filter(w=>isCritical(w) && !isConfirmationState(w));
- const carryOver=active
-  .filter(w=>!w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
-  .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
 
  const dueMasteredAll = reviewPool
-  .filter(w =>
-    (w.mastered || w.studyState==="mastered" || (w.learningState||"auto")==="mastered")
-    && isDueForReview(w)
-  )
+  .filter(w => isReviewCandidateOrMissingDate(w) && (!w.nextReviewAt || isDueForReview(w)))
   .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0));
 
  sessionDueReviewsTotal = dueMasteredAll.length;
- const reviewLimit = getMinReviewsPerSession();
- const dueMastered = dueMasteredAll.slice(0, reviewLimit);
 
- const newWords=active.filter(w=>(w.studyState||"new")==="new");
+ let selected=[];
 
- // Main round slots: confirmations, critical, carry-over and new words.
- let core=[];
- core.push(...confirmation);
- core.push(...critical);
- core.push(...carryOver);
- core=[...new Set(core)];
-
- const freeSlots=Math.max(0,targetUnique-core.length);
- core.push(...newWords.slice(0,Math.min(maxNew,freeSlots)));
- core=[...new Set(core)].slice(0,targetUnique);
-
- function ensureMinimumPhrases(coreList){
-   const minPhrases=getMinPhrasesPerSession();
-   if(minPhrases<=0) return coreList;
-
-   let result=[...coreList];
-   let phraseCount=result.filter(isPhraseCard).length;
-   if(phraseCount>=minPhrases) return result;
-
-   const protectedSet=new Set([...confirmation,...critical]);
-   const candidates=active
-     .filter(w=>isPhraseCard(w) && !result.includes(w) && !protectedSet.has(w))
+ if(mode==="reviews"){
+   const dueLimit=Math.round(targetUnique*(scoreValue("modeReviewsDuePct",100)/100));
+   const due=dueMasteredAll.slice(0,dueLimit || targetUnique);
+   const upcoming=upcomingReviewCandidates(reviewPool, targetUnique-due.length);
+   selected=takeBalanced([...due,...upcoming], targetUnique);
+   sessionPlannedReviews=selected.filter(w=>dueMasteredAll.includes(w)).length;
+ }else if(mode==="phrases"){
+   const activePhrases=active
+     .filter(w=>isPhraseCard(w))
      .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
-
-   for(const phrase of candidates){
-     if(phraseCount>=minPhrases) break;
-     if(result.length < targetUnique){
-       result.push(phrase);
-       phraseCount++;
-       continue;
-     }
-     let replaceIdx=-1;
-     let replaceScore=-Infinity;
-     result.forEach((w,i)=>{
-       if(protectedSet.has(w)) return;
-       const score=(w.memoryLevel||0) + (isPhraseCard(w)?-1000:0);
-       if(score>replaceScore){ replaceScore=score; replaceIdx=i; }
+   const masteredPhrases=reviewPool
+     .filter(w=>isPhraseCard(w) && isMasteredForScheduling(w))
+     .sort((a,b)=>(isDueForReview(a)?0:1)-(isDueForReview(b)?0:1) || (a.nextReviewAt||Infinity)-(b.nextReviewAt||Infinity));
+   const activeTarget=Math.round(targetUnique*(scoreValue("modePhrasesActivePct",80)/100));
+   const a=activePhrases.slice(0,activeTarget);
+   const m=masteredPhrases.slice(0,Math.max(0,targetUnique-a.length));
+   selected=takeBalanced([...a,...m,...activePhrases.slice(activeTarget)], targetUnique);
+   sessionPlannedReviews=selected.filter(w=>dueMasteredAll.includes(w)).length;
+ }else if(mode==="hard"){
+   const hard=active
+     .filter(w=>isHardCandidate(w) && !isConfirmationState(w))
+     .sort((a,b)=>{
+       if(isCritical(a)!==isCritical(b)) return isCritical(a)?-1:1;
+       if((b.wrongStreak||0)!==(a.wrongStreak||0)) return (b.wrongStreak||0)-(a.wrongStreak||0);
+       return (a.memoryLevel||0)-(b.memoryLevel||0);
      });
-     if(replaceIdx>=0){
-       result[replaceIdx]=phrase;
-       phraseCount++;
+   selected=takeBalanced([...confirmation,...critical,...hard], targetUnique);
+   sessionPlannedReviews=0;
+ }else if(mode==="intense"){
+   const newWords=active.filter(w=>(w.studyState||"new")==="new");
+   const learning=active
+    .filter(w=>!isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
+    .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+   const newTarget=Math.round(targetUnique*(scoreValue("modeIntenseNewPct",50)/100));
+   const n=newWords.slice(0,Math.min(maxNew,newTarget));
+   const l=learning.slice(0,Math.max(0,targetUnique-n.length));
+   selected=takeBalanced([...confirmation,...critical,...n,...l,...newWords.slice(n.length)], targetUnique);
+   sessionPlannedReviews=0;
+ }else{
+   const carryOver=active
+    .filter(w=>!w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
+    .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+   const newWords=active.filter(w=>(w.studyState||"new")==="new");
+
+   let core=[];
+   core.push(...confirmation);
+   core.push(...critical);
+   core.push(...carryOver);
+   core=[...new Set(core)];
+
+   const freeSlots=Math.max(0,targetUnique-core.length);
+   core.push(...newWords.slice(0,Math.min(maxNew,freeSlots)));
+   core=[...new Set(core)].slice(0,targetUnique);
+
+   function ensureMinimumPhrases(coreList){
+     const minPhrases=getMinPhrasesPerSession();
+     if(minPhrases<=0) return coreList;
+
+     let result=[...coreList];
+     let phraseCount=result.filter(isPhraseCard).length;
+     if(phraseCount>=minPhrases) return result;
+
+     const protectedSet=new Set([...confirmation,...critical]);
+     const candidates=active
+       .filter(w=>isPhraseCard(w) && !result.includes(w) && !protectedSet.has(w))
+       .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+
+     for(const phrase of candidates){
+       if(phraseCount>=minPhrases) break;
+       if(result.length < targetUnique){
+         result.push(phrase);
+         phraseCount++;
+         continue;
+       }
+       let replaceIdx=-1;
+       let replaceScore=-Infinity;
+       result.forEach((w,i)=>{
+         if(protectedSet.has(w)) return;
+         const score=(w.memoryLevel||0) + (isPhraseCard(w)?-1000:0);
+         if(score>replaceScore){ replaceScore=score; replaceIdx=i; }
+       });
+       if(replaceIdx>=0){
+         result[replaceIdx]=phrase;
+         phraseCount++;
+       }
      }
+     return [...new Set(result)].slice(0,targetUnique);
    }
-   return [...new Set(result)].slice(0,targetUnique);
+
+   core=ensureMinimumPhrases(core);
+
+   selected=[...core];
+   const reviewLimit=getMinReviewsPerSession();
+   const dueMastered=dueMasteredAll.slice(0,reviewLimit);
+   dueMastered.forEach(w=>{ if(!selected.includes(w)) selected.push(w); });
+   sessionPlannedReviews=dueMastered.length;
+
+   retentionChallengeCards(active,Math.max(1,Math.round(maxCards*0.05))).forEach(w=>{
+     if(!selected.includes(w)) selected.push(w);
+   });
+
+   selected = selected.slice(0, Math.max(1, maxCards + reviewLimit));
  }
 
- core=ensureMinimumPhrases(core);
-
-
- // Reviews are extra slots independent from the main distinct-word target.
- let selected=[...core];
- dueMastered.forEach(w=>{ if(!selected.includes(w)) selected.push(w); });
- sessionPlannedReviews=dueMastered.length;
-
- // Challenge cards remain tiny and optional; do not crowd reviews.
- retentionChallengeCards(active,Math.max(1,Math.round(maxCards*0.05))).forEach(w=>{
-   if(!selected.includes(w)) selected.push(w);
- });
-
- selected = selected.slice(0, Math.max(1, maxCards + reviewLimit));
+ if(mode!=="normal"){
+   selected=[...new Set(selected)].slice(0,Math.max(1,targetUnique));
+ }
 
  selected.forEach(w=>{
   markSessionWord(w);
@@ -1835,6 +2130,7 @@ function buildPracticeQueue(){
 }
 
 window.__wakeLock = window.__wakeLock || null;
+let wakeLockKeepAliveTimer=null;
 
 async function requestWakeLock(){
   try{
@@ -1843,10 +2139,23 @@ async function requestWakeLock(){
       window.__wakeLock.addEventListener?.('release',()=>{window.__wakeLock=null;});
     }
   }catch(e){}
+
+  // Fallback/keepalive: iOS Safari/PWA pode ignorar Screen Wake Lock.
+  // Não garante 100%, mas reduz standby durante treino com microfone.
+  try{
+    clearInterval(wakeLockKeepAliveTimer);
+    wakeLockKeepAliveTimer=setInterval(()=>{
+      if(micMasterOn || currentCard){
+        document.body.dataset.keepAwake=String(Date.now());
+      }
+    }, 20000);
+  }catch(e){}
 }
 
 async function releaseWakeLock(){
   try{
+    clearInterval(wakeLockKeepAliveTimer);
+    wakeLockKeepAliveTimer=null;
     if(window.__wakeLock){
       await window.__wakeLock.release();
       window.__wakeLock=null;
@@ -1936,6 +2245,7 @@ markSessionWord(currentCard);
 practiceQueue.splice(pick.i,1);
 currentCard.sessionAppearances=(currentCard.sessionAppearances||0)+1;
 currentCard.lastSeenCardIndex=window.sessionCardCounter;
+currentCard.wasDueReviewAtPresentation = !!(currentCard.nextReviewAt && currentCard.nextReviewAt <= nowTs() && isMasteredForScheduling(currentCard));
 
 card.innerHTML=currentCard.pt;
 updateStats();
@@ -1975,6 +2285,34 @@ function scoreValue(id,fallback){
 
 function masterThreshold(){
  return scoreValue("masterThreshold",85);
+}
+function stabilityMasterThreshold(){
+ return scoreValue("stabilityMasterThreshold",50);
+}
+function isAutoMasteryReady(word){
+ return (word.memoryLevel||0) >= masterThreshold() && (word.stabilityScore||0) >= stabilityMasterThreshold();
+}
+function isManualMastered(word){
+ return !!word.manualMastered;
+}
+
+
+function isSuspendedCard(word){
+ return (word?.learningState||"auto")==="suspended" || word?.studyState==="suspended";
+}
+
+function isLearningCandidate(word){
+ return !!word && !isSuspendedCard(word) && !isMasteredForScheduling(word);
+}
+
+function isReviewCandidateOrMissingDate(word){
+ return !!word && !isSuspendedCard(word) && isMasteredForScheduling(word);
+}
+
+function isMasteredForScheduling(word){
+ if(!word || isSuspendedCard(word)) return false;
+ if(isManualMastered(word)) return true;
+ return isAutoMasteryReady(word);
 }
 function minExposuresToMaster(){
  return scoreValue("minExposuresToMaster",5);
@@ -2022,7 +2360,13 @@ function reviewGrowthFactor(){
 }
 
 function isDueForReview(word){
- return !word.nextReviewAt || word.nextReviewAt <= nowTs();
+ return !!(word && word.nextReviewAt && word.nextReviewAt <= nowTs());
+}
+
+function isDueForLearningMetrics(word){
+ // Importante: nextReviewAt=0 significa “sem revisão marcada”, não “revisão vencida”.
+ // Só conta como revisão vencida para pontos se a carta já era dominada/manual e tinha data real vencida.
+ return !!(word && word.nextReviewAt && word.nextReviewAt <= nowTs() && isMasteredForScheduling(word));
 }
 
 function scheduleNextReview(word, success=true){
@@ -2032,13 +2376,6 @@ function scheduleNextReview(word, success=true){
  const adaptive = $("adaptiveScheduler") && $("adaptiveScheduler").checked;
 
  if(success){
-
-   // estabilidade aumenta lentamente com sucesso consistente
-   word.stabilityScore = Math.min(100,
-      (word.stabilityScore||0)
-      + (word.mastered ? 12 : 6)
-      + Math.max(0,(word.correctStreak||0)*1.5)
-   );
 
    let current = word.reviewIntervalDays || initialReviewDays();
    let growth = reviewGrowthFactor();
@@ -2068,11 +2405,6 @@ function scheduleNextReview(word, success=true){
 
  }else{
 
-   // esquecimento reduz estabilidade
-   word.stabilityScore = Math.max(0,
-      (word.stabilityScore||0) - 18
-   );
-
    word.reviewIntervalDays = 0;
    word.nextReviewAt = nowTs();
  }
@@ -2086,9 +2418,38 @@ function isSessionDue(word){
  return !word.sessionDueAt || word.sessionDueAt <= (window.sessionCardCounter || 0);
 }
 
+function confirmationSpacingAfterFailure(word, successes){
+ try{
+   const failed = Math.round(Number(word?.lastFailedSpacing || word?.presentedSpacing || 0));
+   const normal = normalSpacingThreshold();
+
+   // If the word has just failed above normal, confirm near the failed zone,
+   // not back at the very short 3-5 range.
+   if(failed > normal){
+     const base = Math.max(3, failed - 2);
+     if((successes||0) <= 0) return Math.max(3, Math.min(base, failed));
+     return Math.max(base, Math.min(failed + 1, base + 3));
+   }
+
+   return (successes||0) <= 0 ? randomInt(3,5) : randomInt(8,12);
+ }catch(e){
+   return (successes||0) <= 0 ? randomInt(3,5) : randomInt(8,12);
+ }
+}
+
 function plannedRepeatDistance(word){
- if(isCritical(word)) return 1;
- if(isConfirmationState(word)) return 2;
+ const finish=(value,source)=>{
+   const dist=Math.max(0,Math.round(Number(value||0)));
+   setTestedSpacingForCard(word,dist,source||"plannedRepeatDistance");
+   return dist;
+ };
+
+ if(isCritical(word)) return finish(1,"critical");
+
+ if(isConfirmationState(word)){
+   const successes=word.retentionCheckSuccesses||0;
+   return finish(confirmationSpacingAfterFailure(word,successes),"confirmation");
+ }
 
  const mem = word.memoryLevel || 0;
  const roundStreak = sessionRoundStreak[sessionWordKey(word)] || 0; // apenas visual/debug
@@ -2145,7 +2506,7 @@ function plannedRepeatDistance(word){
    reason += " · difícil";
  }
 
- dist = Math.max(minRepeatDistance(), applySpacingMode(dist));
+ dist = Math.max(minRepeatDistance(), applySpacingMode(Math.round(dist*modeSpacingMult())));
 
  // Preparação para Inspector da Palavra.
  word.lastSpacingCategory = category;
@@ -2154,12 +2515,15 @@ function plannedRepeatDistance(word){
  word.lastSpacingRoundStreak = roundStreak;
  word.lastSpacingHistoricalStreak = historicalStreak;
 
- return dist;
+ return finish(dist,"plannedRepeatDistance");
 }
+
+
+
 
 function memoryLabel(word){
  const mem=word.memoryLevel||0;
- if((word.studyState||"new")==="relearningConfirmation") return "Confirmação";
+ if(isConfirmationState(word)) return "Verificação";
  if(word.studyState==="mastered" || word.mastered) return "Dominada";
  if(isCritical(word)) return "Zona crítica ativa";
  if(mem>=75) return "Quase dominada";
@@ -2169,7 +2533,7 @@ function memoryLabel(word){
 
 
 function isConfirmationState(word){
- return (word.studyState||"new")==="relearningConfirmation";
+ return (word.studyState||"new")==="relearningConfirmation" || !!word.retentionCheckPending;
 }
 
 
@@ -2256,10 +2620,312 @@ function dt52Penalty(type){
 }
 
 
+
+function normalSpacingThreshold(){
+ const el=$("spacingMidMax");
+ return el ? Number(el.value) : 7;
+}
+
+function clampFragilityDebt(v){
+ return Math.max(0, Math.min(2, Number(v||0)));
+}
+
+function hardMinXp(){
+ return 3 * scoreValue("xpCorrect",10);
+}
+
+function estimatePresentedSpacing(word){
+ try{
+   if(!word) return 0;
+
+   const normal = normalSpacingThreshold();
+   const candidates = [];
+
+   const addCandidate = v => {
+     const n = Math.round(Number(v || 0));
+     if(n > 0) candidates.push(n);
+   };
+
+   addCandidate(word.presentedSpacing);
+   addCandidate(word.reviewIntervalDays);
+   addCandidate(word.lastSpacingDistance);
+   addCandidate(word.lastTestedSpacing);
+   addCandidate(word.bestSpacing);
+
+   // For due/mastered review cards, old databases may have reviewIntervalDays=0/1.
+   // A mastered due review represents a long-term retention test, so the attempted
+   // spacing must not collapse to 1-3. Use at least normal+1.
+   if(isDueForReview(word) && isMasteredForScheduling(word)){
+     addCandidate(normal + 1);
+   }
+
+   // Confirmation cards created after a failed review should not overwrite the
+   // failed review spacing. If no better historical signal exists, use the
+   // confirmation scheduler value, but never below the normal threshold when
+   // the word came from mastered/review status.
+   if(isConfirmationState(word)){
+     if((word.wasMasteredBeforeConfirmation || word.reviewIntervalDays > 0 || word.stabilityScore >= stabilityThreshold())){
+       addCandidate(normal + 1);
+     }
+   }
+
+   if(candidates.length){
+     return Math.max(...candidates);
+   }
+
+   // Fallback to within-session distance.
+   if(word.lastSeenCardIndex !== undefined && typeof window !== "undefined"){
+     const observed = Math.max(0, Number(window.sessionCardCounter || 0) - Number(word.lastSeenCardIndex || 0));
+     if(observed > 0) return observed;
+   }
+
+   return 0;
+ }catch(e){
+   console.warn("estimatePresentedSpacing failed", e);
+   return 0;
+ }
+}
+
+
+
+function ensurePresentedSpacingForAnswer(word, source){
+ try{
+   if(!word) return 0;
+   const spacing = Math.max(0, Math.round(Number(estimatePresentedSpacing(word) || 0)));
+   if(spacing > 0){
+     word.presentedSpacing = spacing;
+     word.presentedSpacingSource = source || "answer";
+   }
+   return spacing;
+ }catch(e){
+   console.warn("ensurePresentedSpacingForAnswer failed", e);
+   return 0;
+ }
+}
+
+
+function currentSpacingForDifficulty(word){
+ try{
+   const presented = Number(word?.presentedSpacing || 0);
+   if(presented > 0) return presented;
+
+   const estimated = estimatePresentedSpacing(word);
+   if(estimated > 0) return estimated;
+
+   const explicit = Number(word?.lastTestedSpacing || 0);
+   if(explicit > 0) return explicit;
+
+   return 0;
+ }catch(e){
+   console.warn("currentSpacingForDifficulty failed", e);
+   return 0;
+ }
+}
+
+
+
+function setTestedSpacingForCard(word, spacing, source){
+ try{
+   if(!word) return;
+   const value = Math.max(0, Math.round(Number(spacing || 0)));
+   word.lastTestedSpacing = value;
+   word.lastTestedSpacingSource = source || "unknown";
+ }catch(e){
+   console.warn("setTestedSpacingForCard failed", e);
+ }
+}
+
+
+
+function updateDifficultyModel(word, success){
+ try{
+   if(!word) return;
+   ensurePresentedSpacingForAnswer(word, success ? "answer-correct" : "answer-wrong");
+   const spacing = currentSpacingForDifficulty(word);
+   if(!spacing || spacing <= 0) return;
+   const normal = normalSpacingThreshold();
+
+   // Migração conservadora: se temos uma tentativa real mas bestSpacing ainda está a 0,
+   // usar esta tentativa como evidência histórica mínima.
+   if((word.bestSpacing||0) <= 0){
+     ensureHistoricalBestSpacing(word, spacing);
+   }
+
+   if(success){
+     if(spacing > (word.bestSpacing || 0)) word.bestSpacing = spacing;
+     if(spacing > normal) word.fragilityDebt = clampFragilityDebt((word.fragilityDebt || 0) - 0.67);
+   }else{
+     word.lastFailedSpacing = spacing;
+     if(spacing > normal) word.fragilityDebt = clampFragilityDebt((word.fragilityDebt || 0) + 1);
+   }
+ }catch(e){
+   console.warn("updateDifficultyModel failed; training continues", e);
+ }
+}
+
+
+function isFragile(word){
+ if(!word || isSuspendedCard(word)) return false;
+ return (word.bestSpacing || 0) > normalSpacingThreshold() && clampFragilityDebt(word.fragilityDebt || 0) >= 2;
+}
+
+function isResistant(word){
+ if(!word || isSuspendedCard(word) || isMasteredForScheduling(word)) return false;
+
+ const hasTelemetry =
+   (word.bestSpacing || 0) > 0 ||
+   (word.lastTestedSpacing || 0) > 0 ||
+   (word.lastFailedSpacing || 0) > 0;
+
+ if(!hasTelemetry) return false;
+
+ const enoughExposure = (word.xp || 0) >= hardMinXp();
+ const stuckAtNormalBarrier = (word.bestSpacing || 0) > 0 && (word.bestSpacing || 0) <= normalSpacingThreshold();
+
+ const fellBackToNormal =
+   clampFragilityDebt(word.fragilityDebt || 0) > 0 &&
+   (word.lastFailedSpacing || 0) > 0 &&
+   (word.lastFailedSpacing || 0) <= normalSpacingThreshold();
+
+ return (enoughExposure && stuckAtNormalBarrier) || fellBackToNormal;
+}
+
+
+
+function difficultyStateLabel(word){
+ if(isFragile(word)) return "Frágil";
+ if(isResistant(word)) return "Resistente";
+ return "";
+}
+
+function classificationLabel(word){
+ if(!word) return "—";
+ if(isFragile(word)) return "Frágil";
+ if(isResistant(word)) return "Resistente";
+ return calculatedWordState(word);
+}
+
+function ensureHistoricalBestSpacing(word, spacing){
+ try{
+   if(!word) return;
+   const s=Math.max(0,Math.round(Number(spacing||0)));
+   if(!s) return;
+   if((word.bestSpacing||0) < s) word.bestSpacing=s;
+ }catch(e){}
+}
+
+function difficultyDiagnosis(word){
+ try{
+   if(!word) return "Sem dados.";
+   const normal=normalSpacingThreshold();
+   const best=Number(word.bestSpacing||0);
+   const failed=Number(word.lastFailedSpacing||0);
+   const presented=Number(word.presentedSpacing||0);
+   const planned=Number(word.lastTestedSpacing||0);
+   const debt=clampFragilityDebt(word.fragilityDebt||0);
+   const lines=[];
+
+   if(isUncalibratedLegacy(word)){
+     lines.push("Palavra herdada de versões anteriores; a calibração começa nos próximos testes.");
+   }else if(best<=normal){
+     lines.push(`Melhor espaçamento ${best}; ainda dentro da barreira normal ${normal}.`);
+   }else{
+     lines.push(`Melhor espaçamento ${best}; já ultrapassou a barreira normal ${normal}.`);
+   }
+
+   if(failed>normal) lines.push(`Última falha ${failed}; aumenta fragilidade.`);
+   else if(failed>0) lines.push(`Última falha ${failed}; ainda dentro da barreira normal.`);
+
+   if(debt>=2) lines.push("Fragilidade completa: debt 2/2.");
+   else if(debt>0) lines.push(`Fragilidade parcial: debt ${debt.toFixed(2)}/2.`);
+
+   if(presented>0 && planned>0){
+     lines.push(`Testado em ${presented}; próximo espaçamento planeado em ${planned}.`);
+   }else if(presented>0){
+     lines.push(`Testado em ${presented}.`);
+   }else if(planned>0){
+     lines.push(`Próximo espaçamento planeado: ${planned}.`);
+   }
+
+   lines.push(barrierSummary(word));
+   lines.push(spacingProgressText(word));
+
+   return lines.join(" ");
+ }catch(e){ return "Diagnóstico indisponível."; }
+}
+
+
+
+function sourceLabel(src){
+ const map={
+   "answer-correct":"Resposta correta",
+   "answer-wrong":"Resposta errada",
+   "plannedRepeatDistance":"Espaçamento planeado",
+   "confirmation":"Confirmação",
+   "critical":"Zona crítica",
+   "difficultyFallback":"Fallback técnico",
+   "unknown":"—",
+   "":"—"
+ };
+ return map[src] || src || "—";
+}
+
+function isUncalibratedLegacy(word){
+ if(!word) return false;
+ return (word.bestSpacing||0) <= 0 && ((word.xp||0)>0 || (word.correctStreak||0)>0 || (word.memoryLevel||0)>0 || isDueForReview(word));
+}
+
+function displayBestSpacing(word){
+ if(isUncalibratedLegacy(word)) return "Não calibrado";
+ return String(Math.round(word.bestSpacing||0));
+}
+
+function visualTagLabel(word){
+ if(!word) return "—";
+ if(isFragile(word)) return "🔴 Frágil";
+ if(isResistant(word)) return "🟠 Resistente";
+ if(isConfirmationState(word)) return "🟡 Verificação";
+ if(isMasteredForScheduling(word)) return "🟢 Dominada";
+ if(isCritical(word)) return "🔴 Zona crítica";
+ return "🔵 Aprendizagem";
+}
+
+function spacingBandInfo(){
+ const normal=normalSpacingThreshold();
+ const highMin=$("spacingHighMin") ? Number($("spacingHighMin").value) : 8;
+ const highMax=$("spacingHighMax") ? Number($("spacingHighMax").value) : 12;
+ const veryMin=$("spacingVeryHighMin") ? Number($("spacingVeryHighMin").value) : 13;
+ const veryMax=$("spacingVeryHighMax") ? Number($("spacingVeryHighMax").value) : 20;
+ return {normal, highMin, highMax, veryMin, veryMax};
+}
+
+function barrierSummary(word){
+ const b=spacingBandInfo();
+ const best=Number(word?.bestSpacing||0);
+ if(isUncalibratedLegacy(word)) return `Barreira normal: ${b.normal}. Ainda sem calibração histórica.`;
+ if(best<=b.normal) return `Barreira atual: normal (${b.normal}). Próxima: espaçada (${b.highMin}–${b.highMax}).`;
+ if(best<b.veryMin) return `Barreira atual: espaçada (${b.highMin}–${b.highMax}). Próxima: muito espaçada (${b.veryMin}–${b.veryMax}).`;
+ return `Barreira atual: muito espaçada (${b.veryMin}–${b.veryMax}).`;
+}
+
+function spacingProgressText(word){
+ const b=spacingBandInfo();
+ const best=Number(word?.bestSpacing||0);
+ if(isUncalibratedLegacy(word)) return "Progresso: será calibrado nos próximos testes.";
+ if(best<=b.normal) return `Progresso: ${best}/${b.highMin} para sair da barreira normal.`;
+ if(best<b.veryMin) return `Progresso: ${best}/${b.veryMin} para chegar a muito espaçada.`;
+ return `Progresso: ${best}/${b.veryMax} dentro da zona muito espaçada.`;
+}
+
 function clampValue(v,min,max){return Math.max(min,Math.min(max,v));}
+
+function isDueScoringContext(word){
+ return !!(word && word.wasDueReviewAtPresentation && isMasteredForScheduling(word));
+}
 
 function stabilityDeltaFor(type,success,due=false){
  if(success) return due ? scoreValue("stabilityDueCorrect",10) : scoreValue("stabilityCorrect",4);
+ if(due) return scoreValue("stabilityDueMemoryError",-18);
  if(type==="article") return scoreValue("stabilityArticleError",-3);
  if(type==="grammar") return scoreValue("stabilityGrammarError",-6);
  return scoreValue("stabilityMemoryError",-12);
@@ -2268,65 +2934,126 @@ function stabilityDeltaFor(type,success,due=false){
 function xpDeltaFor(type,success,due=false,skip=false){
  if(skip) return scoreValue("xpSkip",0);
  if(success) return due ? scoreValue("xpDueCorrect",20) : scoreValue("xpCorrect",10);
+ if(due) return scoreValue("xpDueMemoryError",1);
  if(type==="article") return scoreValue("xpArticleError",4);
  if(type==="grammar") return scoreValue("xpGrammarError",3);
  return scoreValue("xpMemoryError",1);
 }
 
 function applyLearningMetrics(word,type,success,skip=false){
- const due=isDueForReview(word);
- word.stabilityScore=clampValue((word.stabilityScore||0)+stabilityDeltaFor(type,success,due),0,100);
- word.xp=Math.max(0,(word.xp||0)+xpDeltaFor(type,success,due,skip));
+ const due=isDueScoringContext(word);
+ const stabilityDelta=stabilityDeltaFor(type,success,due)*modeStabilityMult();
+ const xpDelta=xpDeltaFor(type,success,due,skip)*modeXpMult();
+ word.stabilityScore=clampValue((word.stabilityScore||0)+stabilityDelta,0,100);
+ word.xp=Math.max(0,(word.xp||0)+xpDelta);
 }
 
 function setConfirmationState(word){
+ word.wasMasteredBeforeConfirmation=true;
  word.studyState="relearningConfirmation";
  word.mastered=false;
+ word.retentionCheckPending=true;
+ word.retentionCheckSuccesses=0;
+ word.retentionCheckFails=0;
  word.difficultyBoost=false;
  word.memoryLevel=Math.max(criticalThreshold()+5, Math.min(80, word.memoryLevel||75));
 }
 
+
+
 function recoverFromConfirmation(word){
  word.studyState="mastered";
  word.mastered=true;
+ word.retentionCheckPending=false;
+ word.wasMasteredBeforeConfirmation=false;
+ word.retentionCheckSuccesses=0;
+ word.retentionCheckFails=0;
  word.difficultyBoost=false;
- word.memoryLevel=Math.max(75, Math.min(90, word.memoryLevel||75));
+ word.memoryLevel=Math.max(masterThreshold(), Math.min(95, word.memoryLevel||masterThreshold()));
+ word.stabilityScore=Math.max(stabilityMasterThreshold(), word.stabilityScore||0);
  word.correctStreak=Math.max(word.correctStreak||0, minStreakToMaster());
+}
+
+
+function partialRecoverFromConfirmation(word){
+ word.studyState="relearningConfirmation";
+ word.mastered=false;
+ word.retentionCheckPending=true;
+ word.retentionCheckSuccesses=Math.min(2,(word.retentionCheckSuccesses||0)+1);
+ word.retentionCheckFails=0;
+ word.difficultyBoost=false;
+ word.memoryLevel=Math.max(Math.min(masterThreshold()-1,80), word.memoryLevel||75);
 }
 
 function failConfirmation(word){
  word.studyState="learning";
  word.mastered=false;
+ word.retentionCheckPending=false;
+ word.retentionCheckSuccesses=0;
+ word.retentionCheckFails=(word.retentionCheckFails||0)+1;
  word.difficultyBoost=true;
- word.memoryLevel=Math.min(word.memoryLevel||0, criticalThreshold()-10);
+ word.memoryLevel=Math.min(word.memoryLevel||0, Math.max(criticalThreshold()-10, masterThreshold()-25));
+ if((word.learningState||"auto")==="mastered"){
+   word.learningState="auto";
+ }
+ word.manualMastered=false;
 }
 
 
-function updateMemory(word,delta){
- const minLevel=minMemoryLevel();
-
- word.memoryLevel=Math.max(minLevel,Math.min(100,(word.memoryLevel||0)+delta));
-
- // V10.6.16.5:
- // Single source of truth for mastery: Memory >= configured mastery threshold.
- if((word.memoryLevel||0) >= masterThreshold()){
+function syncMasteryState(word){
+ if(!word) return;
+ if(isSuspendedCard(word)){
+   word.mastered=false;
+   word.studyState="suspended";
+   return;
+ }
+ if(isManualMastered(word)){
+   word.learningState="mastered";
+   word.mastered=true;
+   word.studyState="mastered";
+   word.retentionCheckPending=false;
+   word.retentionCheckSuccesses=0;
+   word.retentionCheckFails=0;
+   word.memoryLevel=Math.max(word.memoryLevel||0, masterThreshold());
+   word.stabilityScore=Math.max(word.stabilityScore||0, stabilityMasterThreshold());
+   return;
+ }
+ if(isAutoMasteryReady(word)){
    word.studyState="mastered";
    word.mastered=true;
-   if((word.learningState||"auto") !== "suspended"){
-     word.learningState = "mastered";
-   }
+   if((word.learningState||"auto")==="mastered") word.learningState="auto";
  }else{
-   if(word.studyState==="mastered"){
-     word.studyState="learning";
-   }
    word.mastered=false;
-   if((word.learningState||"auto")==="mastered"){
-     word.learningState="auto";
-   }
-   if(word.studyState!=="new"){
+   if((word.learningState||"auto")==="mastered") word.learningState="auto";
+   if(word.studyState==="mastered") word.studyState="learning";
+   if(word.studyState!=="new" && !isConfirmationState(word)){
      word.studyState="learning";
    }
  }
+}
+
+
+
+function migrateLegacyMasteryState(word){
+ if(!word) return;
+ if((word.learningState||"auto")==="suspended") return;
+ if(isManualMastered(word)) return;
+ const looksAutoMastered = !!word.mastered || word.studyState==="mastered";
+ if(looksAutoMastered && !isAutoMasteryReady(word)){
+   word.mastered=false;
+   word.studyState="relearningConfirmation";
+   word.retentionCheckPending=true;
+   word.retentionCheckSuccesses=0;
+   word.retentionCheckFails=0;
+   if((word.learningState||"auto")==="mastered") word.learningState="auto";
+ }
+}
+
+function updateMemory(word,delta){
+ const minLevel=minMemoryLevel();
+ const adjustedDelta=delta*modeMemoryMult();
+ word.memoryLevel=Math.max(minLevel,Math.min(100,(word.memoryLevel||0)+adjustedDelta));
+ syncMasteryState(word);
 }
 
 function registerCorrect(){
@@ -2336,29 +3063,33 @@ const idx=vocabulary.indexOf(currentCard);
 if(idx>=0){
  const word=vocabulary[idx];
 
- const wasMastered = !!sessionInitialSnapshot[idx]?.mastered;
+ const wasMastered = isMasteredForScheduling(word);
  const wasConfirmation = isConfirmationState(word);
 
  word.correctStreak=(word.correctStreak||0)+1;
  word.wrongStreak=0;
  word.successCount=(word.successCount||0)+1;
  word.seenCount=(word.seenCount||0)+1;
+ updateDifficultyModel(word,true);
  const sessionKey=sessionWordKey(word);
  sessionRoundStreak[sessionKey]=(sessionRoundStreak[sessionKey]||0)+1;
  sessionLastCorrect[sessionKey]=true;
- if(isDueForReview(word) && (word.mastered || word.studyState==="mastered")) sessionReviewCount++;
+ if(word.wasDueReviewAtPresentation) sessionReviewCount++;
 
  if(wasConfirmation){
-   recoverFromConfirmation(word);
-   sessionRecoveredConfirmations++;
+   applyLearningMetrics(word,"memory",true,false);
+   partialRecoverFromConfirmation(word);
+   if((word.retentionCheckSuccesses||0) >= 2){
+     recoverFromConfirmation(word);
+     sessionRecoveredConfirmations++;
+   }
  }else{
    if(word.studyState==="new"){
      word.studyState="learning";
    }
 
-   updateMemory(word,scoreValue("memoryCorrect",10));
-
    applyLearningMetrics(word,"memory",true,false);
+   updateMemory(word,scoreValue("memoryCorrect",10));
 
    if(wasMastered && word.mastered){
      sessionMasteredRemembered++;
@@ -2398,13 +3129,14 @@ const idx=vocabulary.indexOf(currentCard);
 if(idx>=0){
  const word=vocabulary[idx];
 
- const wasMastered = !!word.mastered || (word.studyState==="mastered");
+ const wasMastered = isMasteredForScheduling(word);
  const wasConfirmation = isConfirmationState(word);
 
  word.correctStreak=0;
  word.wrongStreak=(word.wrongStreak||0)+1;
  word.failCount=(word.failCount||0)+1;
  word.seenCount=(word.seenCount||0)+1;
+ updateDifficultyModel(word,false);
  sessionRoundStreak[sessionWordKey(word)]=0;
  sessionLastCorrect[sessionWordKey(word)]=false;
 
@@ -2427,18 +3159,19 @@ if(idx>=0){
  word.errorStats[errorType]++;
 
  if(wasConfirmation){
+   applyLearningMetrics(word,errorType,false,type==="skip");
    failConfirmation(word);
    sessionFailedConfirmations++;
  }else if(wasMastered){
+   applyLearningMetrics(word,errorType,false,type==="skip");
    setConfirmationState(word);
    sessionMasteredForgotten++;
  }else{
    word.studyState="learning";
    word.mastered=false;
 
-   updateMemory(word,dt52Penalty(errorType));
-
    applyLearningMetrics(word,errorType,false,type==="skip");
+   updateMemory(word,dt52Penalty(errorType));
 
    if(errorType==="memory" || errorType==="grammar"){
       word.difficultyBoost=true;
@@ -2488,6 +3221,7 @@ function progressLevel(streak){
 function compactCardMeta(w){
  if(!w) return "";
  const bits=[];
+ const diffLabel=difficultyStateLabel(w); if(diffLabel) bits.push(diffLabel);
  if(w.difficultyBoost) bits.push("Difícil");
  const state=(typeof calculatedWordState==="function") ? calculatedWordState(w) : memoryLabel(w);
  bits.push(state);
@@ -2504,12 +3238,14 @@ function renderProgress(){
   const label=memoryLabel(currentCard);
   const state=currentCard.studyState||"new";
   const hard=currentCard.difficultyBoost ? `<span class="hardBadge">difícil</span>` : "";
+  const verify=isConfirmationState(currentCard) ? `<span class="verifyBadge">verificação</span>` : "";
+  const stab=Math.round(currentCard.stabilityScore||0);
   let level="low";
-  if(mem>=85) level="done"; else if(mem>=70) level="high"; else if(mem>=40) level="mid";
+  if(isAutoMasteryReady(currentCard) || isManualMastered(currentCard)) level="done"; else if(mem>=70) level="high"; else if(mem>=40) level="mid";
   let dots="";
   const filled=Math.round((mem/100)*MASTER_LIMIT);
   for(let i=1;i<=MASTER_LIMIT;i++) dots+=`<span class="dot ${i<=filled ? "on "+level : ""}">●</span>`;
-  box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memória ${mem}% ${isCritical(currentCard)?"· zona crítica":""} · streak ronda ${roundStreak} · streak histórica ${streak} · ${state} ${hard}</div>`;
+  box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memory ${mem}% · Stability ${stab}% ${isCritical(currentCard)?"· zona crítica":""} · streak ronda ${roundStreak} · streak histórica ${streak} · ${state} ${hard} ${verify}</div>`;
 }
 
 function updateStats(){
@@ -2536,11 +3272,11 @@ if(filterMode!=="all"){
    if(filterMode==="words") return !isPhraseCard(w);
    if(filterMode==="phrases") return isPhraseCard(w);
    if(filterMode==="new") return state==="Nova";
-   if(filterMode==="learning") return state==="Aprendizagem" || state==="Quase dominada";
+   if(filterMode==="learning") return isLearningCandidate(w);
    if(filterMode==="critical") return isCritical(w);
    if(filterMode==="confirmation") return isConfirmationState(w);
-   if(filterMode==="mastered") return state==="Dominada" || state==="Revisão vencida";
-   if(filterMode==="due") return state==="Revisão vencida";
+   if(filterMode==="mastered") return isMasteredForScheduling(w);
+   if(filterMode==="due") return isReviewCandidateOrMissingDate(w) && (!w.nextReviewAt || isDueForReview(w));
    return true;
  });
 }
@@ -2583,7 +3319,7 @@ const avgMemory = vocabulary.length ? Math.round(vocabulary.reduce((s,w)=>s+(w.m
 const dueNow = vocabulary.filter(w=>calculatedWordState(w)==="Revisão vencida").length;
 const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
 
-$("dbCount").textContent=`${list.length} de ${vocabulary.length} itens · ${activeVocabulary().length} em aprendizagem · ${vocabulary.filter(x=>x.mastered).length} dominadas · Memory média ${avgMemory}% · ${dueNow} revisões vencidas · ${criticalNow} críticas`;
+$("dbCount").textContent=`${list.length} de ${vocabulary.length} itens · ${vocabulary.filter(isLearningCandidate).length} em aprendizagem · ${vocabulary.filter(isMasteredForScheduling).length} dominadas · Memory média ${avgMemory}% · ${dueNow} revisões vencidas · ${criticalNow} críticas`;
 
 if(!list.length){$("wordList").innerHTML="<p class='small'>Sem resultados.</p>";return}
 $("wordList").innerHTML="";
@@ -2616,233 +3352,345 @@ document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteWord(Numb
 function getSeparator(){return $("separator").value==="tab"?"\t":$("separator").value}
 function splitLine(line,sep){let r=[],c="",q=false;for(let i=0;i<line.length;i++){const ch=line[i],n=line[i+1];if(ch=='"'&&n=='"'){c+='"';i++}else if(ch=='"'){q=!q}else if(ch===sep&&!q){r.push(c.trim());c=""}else c+=ch}r.push(c.trim());return r}
 
-function forceMicStartSoonNoPortuguese(){
- // Compatibilidade: nextCard() chama esta função.
- // Se a leitura portuguesa estiver desligada, tenta preparar o microfone rapidamente.
- try{
-   if(typeof scheduleAutoMicFastIfNoPortuguese==="function") scheduleAutoMicFastIfNoPortuguese();
- }catch(e){
-   console.warn("forceMicStartSoonNoPortuguese fallback:", e);
- }
-}
 
 function normalizeImportedWord(w){
- const mastered=!!w.mastered || (w.learningState==="mastered") || (w.studyState==="mastered");
  return {
    ...w,
    pt: w.pt || "",
    de: w.de || "",
-   synonyms: Array.isArray(w.synonyms) ? w.synonyms : parseSynonyms(w.synonyms || ""),
+   synonyms: Array.isArray(w.synonyms) ? w.synonyms : parseSynonyms(w.synonyms||""),
    sentence: w.sentence || "",
-   correctStreak: Number(w.correctStreak||0),
-   wrongStreak: Number(w.wrongStreak||0),
+   createdAt: w.createdAt || Date.now(),
+   updatedAt: w.updatedAt || Date.now(),
+   correctStreak: w.correctStreak || 0,
+   wrongStreak: w.wrongStreak || 0,
    difficultyBoost: !!w.difficultyBoost,
-   mastered,
-   learningState: w.learningState || (mastered ? "mastered" : "auto"),
-   memoryLevel: Number(w.memoryLevel ?? (mastered ? masterThreshold() : 0)),
-   stabilityScore: Number(w.stabilityScore ?? (mastered ? 60 : 0)),
-   xp: Number(w.xp||0),
-   studyState: w.studyState || (mastered ? "mastered" : "new"),
-   successCount: Number(w.successCount||0),
-   failCount: Number(w.failCount||0),
-   seenCount: Number(w.seenCount||0),
-   nextReviewAt: Number(w.nextReviewAt||0),
-   lastReviewedAt: Number(w.lastReviewedAt||0),
-   reviewIntervalDays: Number(w.reviewIntervalDays||0),
-   totalReviews: Number(w.totalReviews||0),
-   lastSessionSeen: Number(w.lastSessionSeen||0),
-   sessionDueAt: 0,
-   errorStats: w.errorStats || {memory:0,article:0,grammar:0},
-   createdAt: Number(w.createdAt||Date.now()),
-   updatedAt: Number(w.updatedAt||Date.now())
+   mastered: !!w.mastered,
+   manualMastered: !!w.manualMastered,
+   memoryManualAdjusted: !!w.memoryManualAdjusted,
+   stabilityManualAdjusted: !!w.stabilityManualAdjusted,
+   retentionCheckPending: !!w.retentionCheckPending,
+   retentionCheckSuccesses: w.retentionCheckSuccesses || 0,
+   retentionCheckFails: w.retentionCheckFails || 0,
+   learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
+   memoryLevel: Number(w.memoryLevel || 0),
+   stabilityScore: Number(w.stabilityScore || 0),
+   xp: Number(w.xp || 0),
+   studyState: w.studyState || (w.mastered ? "mastered" : "new"),
+   successCount: w.successCount || 0,
+   failCount: w.failCount || 0,
+   seenCount: w.seenCount || 0,
+   nextReviewAt: w.nextReviewAt || 0,
+   lastReviewedAt: w.lastReviewedAt || 0,
+   reviewIntervalDays: w.reviewIntervalDays || 0,
+   totalReviews: w.totalReviews || 0,
+   lastSessionSeen: w.lastSessionSeen || 0,
+   fragilityDebt: clampFragilityDebt(w.fragilityDebt || 0),
+   lastFailedSpacing: Number(w.lastFailedSpacing || 0),
+   lastTestedSpacing: Number(w.lastTestedSpacing || 0),
+   presentedSpacing: Number(w.presentedSpacing || 0),
+   presentedSpacingSource: w.presentedSpacingSource || "",
+   wasMasteredBeforeConfirmation: !!w.wasMasteredBeforeConfirmation,
+   bestSpacing: Number(w.bestSpacing || 0),
+   errorStats: w.errorStats || {memory:0,article:0,grammar:0}
  };
 }
 
-function safeRefreshAfterImport(){
- try{ renderWordList(); }catch(e){ console.error("Erro ao atualizar BD após importação:", e); }
- try{ startPractice(); }catch(e){ console.error("Erro ao reiniciar treino após importação:", e); }
- try{ updateBackupInfo(); }catch(e){ console.error("Erro ao atualizar backup info:", e); }
+function extractVocabularyFromJson(data){
+ if(Array.isArray(data)) return data;
+ if(data && Array.isArray(data.vocabulary)) return data.vocabulary;
+ if(data && Array.isArray(data.words)) return data.words;
+ if(data && data.data && Array.isArray(data.data.vocabulary)) return data.data.vocabulary;
+ return null;
 }
 
-function importJsonBackup(e){
-  const file = e.target.files[0];
-  if(!file) return;
+function importJsonBackup(){
+ try{
+   const fileInput=$("jsonInput") || $("jsonFile") || $("backupFile") || $("importJsonFile");
+   const textBoxes=["jsonBackupText","backupJsonText","importText","bulkText"];
+   const finish = (text)=>{
+     const payload = normalizeBackupPayload(text);
+     const result = mergeImportedWords(payload.words, "merge");
 
-  const reader = new FileReader();
+     // Import settings only if app supports it and object exists.
+     if(payload.settings && typeof applyImportedSettings === "function"){
+       try{ applyImportedSettings(payload.settings); }catch(e){ console.warn("settings import ignored", e); }
+     }
 
-  reader.onload = function(ev){
-    let resultBox=$("importResult");
-    try{
-      const data = JSON.parse(ev.target.result);
-      const words = Array.isArray(data) ? data : data.vocabulary;
+     safeClearImportBoxes();
+     setImportFeedback(`Backup importado: ${result.added} novos · ${result.updated} atualizados · ${result.invalid} inválidos. Total: ${result.after}.`, true);
+     runDatabaseIntegrityCheck(false);
+   };
 
-      if(!Array.isArray(words)){
-        throw new Error("O ficheiro JSON não contém uma lista de vocabulário válida.");
-      }
+   if(fileInput && fileInput.files && fileInput.files[0]){
+     const reader = new FileReader();
+     reader.onload = () => {
+       try{ finish(String(reader.result||"")); }
+       catch(e){ console.error(e); setImportFeedback("JSON inválido ou incompatível: " + (e.message||e), false); }
+     };
+     reader.onerror = () => setImportFeedback("Erro ao ler ficheiro JSON.", false);
+     reader.readAsText(fileInput.files[0]);
+     return;
+   }
 
-      const normalized = words
-        .map(normalizeImportedWord)
-        .filter(w => w.pt && w.de);
-
-      if(!normalized.length){
-        throw new Error("O ficheiro não contém palavras válidas com português e alemão.");
-      }
-
-      vocabulary = normalized;
-      saveVocabulary();
-
-      if(resultBox){
-        resultBox.innerHTML =
-          `<strong>Backup JSON importado com sucesso.</strong><br>`+
-          `${normalized.length} palavras importadas. `+
-          `${words.length-normalized.length} entradas ignoradas por estarem incompletas.`;
-      }
-
-      safeRefreshAfterImport();
-    }catch(err){
-      console.error("Erro ao importar JSON:", err);
-      if(resultBox){
-        resultBox.innerHTML =
-          `<strong>JSON inválido ou incompatível.</strong><br>`+
-          `<span class="small">${escapeHTML(err.message || String(err))}</span>`;
-      }
-    }
-
-    e.target.value = "";
-  };
-
-  reader.onerror = function(){
-    const resultBox=$("importResult");
-    if(resultBox) resultBox.innerHTML = "<strong>Não consegui ler o ficheiro JSON.</strong>";
-    e.target.value = "";
-  };
-
-  reader.readAsText(file, "UTF-8");
-}
-
-function loadImportFile(e){const f=e.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=x=>{$("bulkText").value=x.target.result;$("importResult").innerHTML="Ficheiro carregado. Clica em Importar."};reader.readAsText(f,"UTF-8")}
-function importBulkText(){
-const resultBox=$("importResult");
-try{
-const text=$("bulkText").value.trim(),sep=getSeparator(),mode=$("importMode") ? $("importMode").value : "add";
-if(!text){
-  if(resultBox) resultBox.innerHTML="<strong>Nada para importar.</strong><br><span class='small'>Cola texto ou carrega um ficheiro.</span>";
-  return;
-}
-
-let processed=0, imported=0, skipped=0, hardDuplicates=0, updated=0, invalid=0, headerSkipped=0;
-let warningRows=[];
-let ignoredRows=[];
-
-text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach((line,i)=>{
-  const p=splitLine(line,sep);
-
-  if(i===0&&p[0]&&p[0].toLowerCase().includes("portugu")){
-    headerSkipped++;
-    skipped++;
-    return;
-  }
-
-  processed++;
-
-  const pt=(p[0]||"").trim(),de=(p[1]||"").trim(),syn=parseSynonyms(p[2]||""),sentence=(p[3]||"").trim();
-
-  if(!pt||!de){
-    invalid++;
-    skipped++;
-    ignoredRows.push(`Linha ${i+1}: incompleta`);
-    return;
-  }
-
-  const warningMatches=synonymOverlapMatches(pt,de,syn,null);
-  if(warningMatches.length){
-    warningRows.push({
-      line:i+1,
-      pt,
-      de,
-      warnings:warningMatches.map(m=>{
-        const bits=[];
-        if(m.synonymOverlap && m.synonymOverlap.length) bits.push(`sinónimos repetidos: ${m.synonymOverlap.join(", ")}`);
-        if(m.deAsExistingSynonym) bits.push("DE principal já existe como sinónimo");
-        return `${m.item.pt} → ${m.item.de} (${bits.join("; ")})`;
-      })
-    });
-  }
-
-  const existingIndex=findBestExistingIndex(pt,de,syn);
-  if(existingIndex>=0){
-    if(mode==="update"){
-      const old=vocabulary[existingIndex];
-      vocabulary[existingIndex]={
-        ...old,
-        pt: pt || old.pt,
-        de: de || old.de,
-        synonyms: mergeSynonyms(old.synonyms, syn),
-        sentence: sentence || old.sentence || "",
-        updatedAt: Date.now()
-      };
-      updated++;
-    }else{
-      hardDuplicates++;
-      skipped++;
-      ignoredRows.push(`Linha ${i+1}: duplicado real — ${pt} → ${de}`);
-    }
-    return;
-  }
-
-  vocabulary.push(normalizeImportedWord({
-    pt,de,synonyms:syn,sentence,createdAt:Date.now(),updatedAt:Date.now(),
-    sessionDueAt:0,correctStreak:0,wrongStreak:0,difficultyBoost:false,mastered:false,
-    memoryLevel:0,stabilityScore:0,xp:0,studyState:"new",learningState:"auto",
-    successCount:0,failCount:0,seenCount:0,nextReviewAt:0,lastReviewedAt:0,reviewIntervalDays:0,
-    totalReviews:0,lastSessionSeen:0,errorStats:{memory:0,article:0,grammar:0}
-  }));
-  imported++;
-});
-
-saveVocabulary();
-
-let detail="";
-if(warningRows.length){
-  detail += `<details class="compact-details"><summary>${warningRows.length} linha(s) com avisos de sobreposição</summary><ul class="dup-list">`+
-    warningRows.map(w=>`<li>Linha ${w.line}: ${escapeHTML(w.pt)} → ${escapeHTML(w.de)}<br>${w.warnings.map(escapeHTML).join("<br>")}</li>`).join("")+
-    `</ul></details>`;
-}
-if(ignoredRows.length){
-  detail += `<details class="compact-details"><summary>${ignoredRows.length} linha(s) ignoradas</summary><ul class="dup-list">`+
-    ignoredRows.map(x=>`<li>${escapeHTML(x)}</li>`).join("")+
-    `</ul></details>`;
-}
-
-if(resultBox){
- resultBox.innerHTML=
-  `<strong>Importação concluída.</strong><br>`+
-  `<strong>${processed}</strong> linhas processadas. `+
-  `<strong>${imported}</strong> importadas. `+
-  `<strong>${updated}</strong> atualizadas. `+
-  `<strong>${hardDuplicates}</strong> duplicados reais ignorados. `+
-  `<strong>${invalid}</strong> inválidas. `+
-  (headerSkipped?`<strong>${headerSkipped}</strong> cabeçalho ignorado. `:"")+
-  `<strong>${warningRows.length}</strong> com avisos.`+
-  detail;
-}
-
-if(imported>0 || updated>0){
-  $("bulkText").value="";
-  if($("fileInput")) $("fileInput").value="";
-}
-
-safeRefreshAfterImport();
-
-}catch(err){
- console.error("Erro ao importar vocabulário:", err);
- if(resultBox){
-   resultBox.innerHTML =
-    `<strong>Erro na importação.</strong><br>`+
-    `<span class="small">${escapeHTML(err.message || String(err))}</span>`;
+   let text="";
+   for(const id of textBoxes){
+     const el=$(id);
+     if(el && el.value && el.value.trim()){
+       text=el.value.trim();
+       break;
+     }
+   }
+   if(!text){
+     setImportFeedback("Escolhe um ficheiro JSON ou cola o conteúdo do backup.", false);
+     return;
+   }
+   finish(text);
+ }catch(e){
+   console.error(e);
+   setImportFeedback("JSON inválido ou incompatível: " + (e.message||e), false);
  }
 }
+
+
+
+function loadImportFile(e){
+ const f=e.target.files[0];
+ if(!f)return;
+ if(/\.json$/i.test(f.name || "")){
+   $("importResult").innerHTML="<strong>Este parece ser JSON.</strong> Usa a secção “Importar backup JSON” em baixo.";
+   e.target.value="";
+   return;
+ }
+ const reader=new FileReader();
+ reader.onload=x=>{
+   $("bulkText").value=x.target.result;
+   $("importResult").innerHTML="Ficheiro carregado. Clica em Importar vocabulário.";
+ };
+ reader.readAsText(f,"UTF-8");
 }
+
+
+function setImportFeedback(msg, ok=true){
+ const targets=["importStatus","bulkImportStatus","jsonImportStatus","dataStatus","importResult","jsonImportResult"];
+ for(const id of targets){
+   const el=$(id);
+   if(el){
+     el.textContent=msg;
+     el.style.color=ok ? "#166534" : "#b91c1c";
+   }
+ }
+}
+
+function normalizeBackupPayload(raw){
+ let data = raw;
+
+ if(typeof data === "string"){
+   data = JSON.parse(data);
+ }
+
+ // Accepted shapes:
+ // 1) Array of words
+ // 2) {words:[...]}
+ // 3) {vocabulary:[...]}
+ // 4) {cards:[...]}
+ // 5) {data:{words:[...]}}
+ let words = null;
+ let settings = null;
+
+ if(Array.isArray(data)){
+   words = data;
+ }else if(data && typeof data === "object"){
+   words = data.words || data.vocabulary || data.cards || (data.data && (data.data.words || data.data.vocabulary || data.data.cards));
+   settings = data.settings || data.config || data.configuration || (data.data && (data.data.settings || data.data.config));
+ }
+
+ if(!Array.isArray(words)){
+   throw new Error("Backup JSON reconhecido, mas não encontrei uma lista de palavras.");
+ }
+
+ return {words, settings, raw:data};
+}
+
+
+function wordIdentityKey(w){
+ try{
+   return [
+     String(w.article||"").trim().toLowerCase(),
+     String(w.de||"").trim().toLowerCase(),
+     String(w.pt||"").trim().toLowerCase()
+   ].join("|");
+ }catch(e){
+   return Math.random().toString(36);
+ }
+}
+function mergeImportedWords(incoming, mode="merge"){
+ const beforeCount = vocabulary.length;
+ let added=0, updated=0, skipped=0, invalid=0;
+ const byKey = new Map(vocabulary.map((w,i)=>[wordIdentityKey(w), i]));
+
+ const normalized=[];
+ for(const raw of incoming){
+   try{
+     const w = normalizeImportedWord(raw);
+     if(!w || (!w.pt && !w.de)){
+       invalid++;
+       continue;
+     }
+     normalized.push(w);
+   }catch(e){
+     invalid++;
+   }
+ }
+
+ if(mode==="replace"){
+   vocabulary = normalized;
+   added = normalized.length;
+ }else{
+   for(const w of normalized){
+     const key = wordIdentityKey(w);
+     if(byKey.has(key)){
+       const idx = byKey.get(key);
+       vocabulary[idx] = {...vocabulary[idx], ...w};
+       updated++;
+     }else{
+       vocabulary.push(w);
+       byKey.set(key, vocabulary.length-1);
+       added++;
+     }
+   }
+ }
+
+ saveVocabulary();
+ if(typeof renderDatabase === "function") renderDatabase();
+ if(typeof updateStats === "function") updateStats();
+ if(typeof buildRound === "function") buildRound();
+
+ return {before:beforeCount, after:vocabulary.length, added, updated, skipped, invalid};
+}
+
+function runDatabaseIntegrityCheck(show=true){
+ const total = vocabulary.length;
+ let corrupt=0, noPt=0, noDe=0, noArticle=0, duplicates=0;
+ const seen = new Set();
+
+ for(const w of vocabulary){
+   if(!w || typeof w !== "object"){
+     corrupt++;
+     continue;
+   }
+   if(!String(w.pt||"").trim()) noPt++;
+   if(!String(w.de||"").trim()) noDe++;
+   if((w.type||"word")==="word" && !String(w.article||"").trim() && String(w.de||"").trim().split(/\s+/).length===1) noArticle++;
+   const key = wordIdentityKey(w);
+   if(seen.has(key)) duplicates++;
+   seen.add(key);
+ }
+
+ const msg = `Integridade BD: ${total} itens · ${corrupt} corrompidos · ${noPt} sem PT · ${noDe} sem DE · ${noArticle} sem artigo · ${duplicates} duplicados.`;
+ if(show){
+   alert(msg);
+   setImportFeedback(msg, corrupt===0);
+ }
+ return {total, corrupt, noPt, noDe, noArticle, duplicates, msg};
+}
+
+function safeClearImportBoxes(){
+ ["bulkText","jsonBackupText","backupJsonText","importText","csvText"].forEach(id=>{
+   const el=$(id);
+   if(el && ("value" in el)) el.value="";
+ });
+}
+
+
+function parseCSV(text){
+ const rows=[];
+ let row=[], cur="", inQuotes=false;
+ for(let i=0;i<text.length;i++){
+   const ch=text[i], next=text[i+1];
+   if(ch==='"'){
+     if(inQuotes && next==='"'){ cur+='"'; i++; }
+     else inQuotes=!inQuotes;
+   }else if((ch===";" || ch==="," || ch==="\t") && !inQuotes){
+     row.push(cur); cur="";
+   }else if((ch==="\n" || ch==="\r") && !inQuotes){
+     if(ch==="\r" && next==="\n") i++;
+     row.push(cur); cur="";
+     if(row.some(x=>String(x||"").trim())) rows.push(row);
+     row=[];
+   }else{
+     cur+=ch;
+   }
+ }
+ row.push(cur);
+ if(row.some(x=>String(x||"").trim())) rows.push(row);
+
+ // remove header if obvious
+ if(rows.length && rows[0].join(" ").toLowerCase().match(/portugu|pt|alem|deutsch|german/)){
+   rows.shift();
+ }
+ return rows;
+}
+
+
+function importBulkText(){
+ try{
+   const boxes=["bulkText","importText","csvText"];
+   let text="";
+   for(const id of boxes){
+     const el=$(id);
+     if(el && el.value && el.value.trim()){
+       text=el.value.trim();
+       break;
+     }
+   }
+   if(!text){
+     setImportFeedback("Nada para importar. Cola CSV/vocabulário na caixa de texto.", false);
+     return;
+   }
+
+   const rows = parseCSV(text);
+   if(!rows || !rows.length){
+     setImportFeedback("Não encontrei linhas válidas para importar.", false);
+     return;
+   }
+
+   const imported=[];
+   for(const row of rows){
+     if(!row || !row.length) continue;
+     const pt=(row[0]||"").trim();
+     const deRaw=(row[1]||"").trim();
+     const synonyms=(row[2]||"").trim();
+     const example=(row[3]||"").trim();
+     if(!pt || !deRaw) continue;
+
+     let article="";
+     let de=deRaw;
+     const m=deRaw.match(/^(der|die|das|ein|eine)\s+(.+)$/i);
+     if(m){
+       article=m[1].toLowerCase();
+       de=m[2].trim();
+     }
+
+     imported.push({
+       pt, de, article,
+       synonyms,
+       example,
+       type: de.split(/\s+/).length>1 ? "phrase" : "word"
+     });
+   }
+
+   const result = mergeImportedWords(imported, "merge");
+   safeClearImportBoxes();
+   setImportFeedback(`Vocabulário importado: ${result.added} novos · ${result.updated} atualizados · ${result.invalid} inválidos. Total: ${result.after}.`, true);
+ }catch(e){
+   console.error(e);
+   setImportFeedback("Erro ao importar vocabulário: " + (e.message||e), false);
+ }
+}
+
+
+
 function csvEscape(v){v=(v||"").toString();return /[;"\n,]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function exportCsv(){const lines=["Português;Alemão;Sinónimos;Frase;Memória;Estado;Acertos;Erros;Difícil;Dominada",...vocabulary.map(x=>[x.pt,x.de,(x.synonyms||[]).join(", "),x.sentence||"",Math.round(x.memoryLevel||0),x.studyState||"new",x.successCount||0,x.failCount||0,x.difficultyBoost?"sim":"não",x.mastered?"sim":"não"].map(csvEscape).join(";"))];downloadFile("vocabulario_deutsch_trainer.csv",lines.join("\n"),"text/csv")}
 function exportJson(){downloadFile("vocabulario_deutsch_trainer.json",JSON.stringify(vocabulary,null,2),"application/json")}
@@ -2854,7 +3702,7 @@ function backupFilename(ext){
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.1",createdAt:new Date().toISOString(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.1",createdAt:new Date().toISOString(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");
@@ -2964,6 +3812,29 @@ function renderStatsPage(){
   `;
 }
 
+
+/*
+============================================================
+TRAINING CORE FREEZE — V10.8.1.7.0
+============================================================
+Do not modify the following interaction/training functions unless a
+specific release is dedicated to the training core and tested separately:
+
+- setupSwipe()
+- nextCard()
+- revealCard()
+- markKnownBySwipe()
+- markWrong()
+- registerCorrect()
+- registerWrong()
+
+Reason:
+V10.8.1.3 is the last confirmed stable version for card tap/click,
+touch swipe and training flow. Future features must be added outside
+this core whenever possible.
+============================================================
+*/
+
 function setupSwipe(){const card=$("card");card.addEventListener("click",revealCard);card.addEventListener("touchstart",e=>{if(!currentCard)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;touchCurrentX=touchStartX;isDragging=true},{passive:true});card.addEventListener("touchmove",e=>{if(!isDragging||!currentCard)return;touchCurrentX=e.touches[0].clientX;const dx=touchCurrentX-touchStartX,dy=e.touches[0].clientY-touchStartY;if(Math.abs(dy)>Math.abs(dx))return;if(dx<-30){card.classList.add("swipe-left");card.classList.remove("swipe-right")}else if(dx>30){card.classList.add("swipe-right");card.classList.remove("swipe-left")}else card.classList.remove("swipe-left","swipe-right")},{passive:true});card.addEventListener("touchend",()=>{if(!isDragging||!currentCard)return;const dx=touchCurrentX-touchStartX;isDragging=false;card.classList.remove("swipe-left","swipe-right");if(dx<=-swipeThreshold)markKnownBySwipe();else if(dx>=swipeThreshold)markWrong()});document.addEventListener("keydown",e=>{if(!currentCard)return;if(e.key==="ArrowLeft")markKnownBySwipe();if(e.key==="ArrowRight")markWrong()})}
 
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>switchPage(t.dataset.page));
@@ -2981,25 +3852,16 @@ if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.se
 
 function normalizeMasteredMemory(){
  let changed=false;
- const threshold = (typeof masterThreshold==="function") ? masterThreshold() : 85;
-
  vocabulary.forEach(w=>{
-   const isMastered =
-     !!w.mastered ||
-     (w.studyState||"new")==="mastered" ||
-     (w.learningState||"auto")==="mastered";
-
-   if(isMastered && (w.memoryLevel||0) < threshold){
-     w.memoryLevel = threshold;
-     changed=true;
+   const before=JSON.stringify([w.mastered,w.studyState,w.learningState,w.memoryLevel,w.stabilityScore,w.nextReviewAt]);
+   syncMasteryState(w);
+   if(isMasteredForScheduling(w) && !w.nextReviewAt){
+     w.nextReviewAt=Date.now()-1000; // sem data = revisão pendente
+     if(!w.reviewIntervalDays) w.reviewIntervalDays=1;
    }
-
-   if((w.learningState||"auto")==="mastered"){
-     w.mastered=true;
-     w.studyState="mastered";
-   }
+   const after=JSON.stringify([w.mastered,w.studyState,w.learningState,w.memoryLevel,w.stabilityScore,w.nextReviewAt]);
+   if(before!==after) changed=true;
  });
-
  if(changed){
    localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
  }
@@ -3008,68 +3870,56 @@ function normalizeMasteredMemory(){
 
 function migrateLegacyWords(){
  if(!Array.isArray(vocabulary)) return false;
-
  let changed=false;
- const now=Date.now();
 
  vocabulary.forEach((w,idx)=>{
-   if(!w.learningState){
-     w.learningState = w.mastered ? "mastered" : "auto";
-     changed=true;
-   }
+   const before=JSON.stringify(w);
 
-   if(w.mastered || w.learningState==="mastered"){
-      if(!w.nextReviewAt){
-         // spread legacy reviews across the next 12-48h to avoid flooding one session
-         const hours = 12 + Math.floor(Math.random()*36);
-         w.nextReviewAt = now + (hours * 60 * 60 * 1000);
-         changed=true;
-      }
-
-      if((w.memoryLevel||0)===0){
-        w.memoryLevel = 80;
-        changed=true;
-      }
-
-      if((w.stabilityScore||0)===0){
-        w.stabilityScore = 60;
-        changed=true;
-      }
-
-      if((w.xp||0)===0){
-        w.xp = 25;
-        changed=true;
-      }
-
-      if(!w.reviewIntervalDays){
-        w.reviewIntervalDays = 1;
-        changed=true;
-      }
+   if(w.manualMastered===undefined) w.manualMastered=false;
+   if(!w.learningState || (w.learningState==="mastered" && !w.manualMastered)){
+     w.learningState="auto";
    }
 
    if(!w.errorStats){
      w.errorStats={memory:0,article:0,grammar:0};
-     changed=true;
    }
 
-   // clean old experimental bucket
    if(w.errorStats && w.errorStats.pronunciation){
      w.errorStats.memory = Number(w.errorStats.memory||0) + Number(w.errorStats.pronunciation||0);
      delete w.errorStats.pronunciation;
-     changed=true;
    }
+
+   syncMasteryState(w);
+
+   if(isMasteredForScheduling(w) && !w.nextReviewAt){
+     w.nextReviewAt=Date.now()-1000;
+     if(!w.reviewIntervalDays) w.reviewIntervalDays=1;
+   }
+
+   if(JSON.stringify(w)!==before) changed=true;
  });
 
  if(changed){
    saveVocabulary();
  }
-
  return changed;
 }
 
 
 loadVocabulary();
 migrateLegacyWords();normalizeMasteredMemory();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
+
+try{
+ if($("trainingMode")){
+   $("trainingMode").onchange=()=>{
+     updateTrainingModeInfo();
+     startPractice();
+   };
+   updateTrainingModeInfo();
+ }
+}catch(e){}
+
 </script>
+<video id="wakeVideo" muted playsinline loop style="display:none;width:1px;height:1px"></video>
 </body>
 </html>
