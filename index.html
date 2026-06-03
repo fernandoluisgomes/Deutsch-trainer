@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.8.1.7.3</title>
+<title>Deutsch Trainer V10.8.1.7.4</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -66,7 +66,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.8.1.7.3</h1>
+<h1>Deutsch Trainer V10.8.1.7.4</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
 <button class="tab" data-page="statsPage">Estatísticas</button>
@@ -455,7 +455,8 @@ Suspensa = removida do treino.
 </div>
 
 <script>
-const STORAGE_KEY="vocabularyGermanTrainer_v5"; // mantém os dados existentes da V5
+const STORAGE_KEY="vocabularyGermanTrainer_v5";
+const SETTINGS_KEY="deutschTrainerSettings_v1"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
 let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;let sessionWords=new Set(),sessionPlannedWords=new Set(),sessionDoneWords=new Set(),sessionReviewCount=0,sessionPlannedReviews=0,sessionDueReviewsTotal=0,sessionRoundStreak={},sessionLastCorrect={};let sessionStartedAt=Date.now(),sessionInitialSnapshot={};window.sessionCardCounter=0;let sessionMasteredRemembered=0,sessionMasteredForgotten=0,sessionRecoveredConfirmations=0,sessionFailedConfirmations=0;
 let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let micMasterOn=false;let autoMicTimer=null;let autoMicRetryTimer=null;let appIsSpeaking=false;let appSpeechCooldownUntil=0;let autoMicSilentStartedAt=0;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
@@ -3472,12 +3473,13 @@ function importJsonBackup(){
      const result = mergeImportedWords(payload.words, "merge");
 
      // Import settings only if app supports it and object exists.
+     let settingsApplied=false;
      if(payload.settings && typeof applyImportedSettings === "function"){
-       try{ applyImportedSettings(payload.settings); }catch(e){ console.warn("settings import ignored", e); }
+       try{ settingsApplied=!!applyImportedSettings(payload.settings); }catch(e){ console.warn("settings import ignored", e); }
      }
 
      safeClearImportBoxes();
-     setImportFeedback(`Backup importado: ${result.added} novos · ${result.updated} atualizados · ${result.invalid} inválidos. Total: ${result.after}.`, true);
+     setImportFeedback(`Backup importado: ${result.added} novos · ${result.updated} atualizados · ${result.invalid} inválidos. Total: ${result.after}.${settingsApplied ? " Configurações restauradas." : " Sem configurações no backup."}`, true);
      runDatabaseIntegrityCheck(false);
    };
 
@@ -3510,6 +3512,7 @@ function importJsonBackup(){
    setImportFeedback("JSON inválido ou incompatível: " + (e.message||e), false);
  }
 }
+
 
 
 
@@ -3756,18 +3759,101 @@ function exportJson(){downloadFile("vocabulario_deutsch_trainer.json",JSON.strin
 function downloadTemplate(){downloadFile("modelo_vocabulario_alemao.csv","Português;Alemão;Sinónimos;Frase\ncasa;das Haus;Haus, Zuhause;Ich gehe nach Hause.\n","text/csv")}
 function downloadFile(name,content,type){const blob=new Blob([content],{type:type+";charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 
+
+const SETTINGS_CONTROL_IDS = ["adaptiveScheduler", "autoMicDelay", "autoMicEnabled", "autoMicMaxSilentMinutes", "backupReminder", "criticalThreshold", "initialReviewDays", "masterThreshold", "maxCardsPerSession", "maxNewWords", "memoryArticleError", "memoryCorrect", "memoryGrammarError", "memoryMemoryError", "minExposuresToMaster", "minMemoryLevel", "minPhrasesPerSession", "minRepeatDistance", "minReviewsPerSession", "minStreakToMaster", "modeHardCards", "modeHardMemoryMult", "modeHardSpacingMult", "modeHardStabilityMult", "modeHardXpMult", "modeIntenseCards", "modeIntenseMemoryMult", "modeIntenseNewPct", "modeIntenseSpacingMult", "modeIntenseStabilityMult", "modeIntenseXpMult", "modeNormalCards", "modeNormalMemoryMult", "modeNormalSpacingMult", "modeNormalStabilityMult", "modeNormalXpMult", "modePhrasesActivePct", "modePhrasesCards", "modePhrasesMemoryMult", "modePhrasesSpacingMult", "modePhrasesStabilityMult", "modePhrasesXpMult", "modeReviewsCards", "modeReviewsDuePct", "modeReviewsMemoryMult", "modeReviewsSpacingMult", "modeReviewsStabilityMult", "modeReviewsXpMult", "repeatCriticalWords", "repeatSpacingMode", "requireArticle", "reviewGrowthFactor", "sessionExcludedThreshold", "showWordInspector", "spacingHighMax", "spacingHighMin", "spacingLowMax", "spacingLowMin", "spacingMidMax", "spacingMidMin", "spacingVeryHighMax", "spacingVeryHighMin", "speakArticle", "speakPortuguese", "speechEnabled", "stabilityArticleError", "stabilityCorrect", "stabilityDueCorrect", "stabilityDueMemoryError", "stabilityGrammarError", "stabilityMasterThreshold", "stabilityMemoryError", "strictGrammarRecognition", "targetDistinctWords", "voiceDebug", "voiceEnabled", "voiceStrictness", "waitForPortugueseBeforeMic", "xpArticleError", "xpCorrect", "xpDueCorrect", "xpDueMemoryError", "xpGrammarError", "xpMemoryError", "xpSkip"];
+
+function readControlValue(el){
+ if(!el) return undefined;
+ if(el.type==="checkbox") return !!el.checked;
+ if(el.type==="number" || el.type==="range") {
+   const n = Number(el.value);
+   return Number.isFinite(n) ? n : el.value;
+ }
+ return el.value;
+}
+
+function writeControlValue(el, value){
+ if(!el || value === undefined || value === null) return;
+ if(el.type==="checkbox") {
+   el.checked = !!value;
+   return;
+ }
+ el.value = String(value);
+}
+
+function collectSettings(){
+ const settings = {};
+ SETTINGS_CONTROL_IDS.forEach(id=>{
+   const el=$(id);
+   if(el) settings[id]=readControlValue(el);
+ });
+ return settings;
+}
+
+function saveSettings(){
+ try{
+   localStorage.setItem(SETTINGS_KEY, JSON.stringify(collectSettings()));
+ }catch(e){
+   console.warn("saveSettings failed", e);
+ }
+}
+
+function applyImportedSettings(settings){
+ try{
+   if(!settings || typeof settings !== "object") return false;
+   SETTINGS_CONTROL_IDS.forEach(id=>{
+     if(Object.prototype.hasOwnProperty.call(settings,id)){
+       writeControlValue($(id), settings[id]);
+     }
+   });
+   saveSettings();
+   if(typeof updateTrainingModeInfo === "function") updateTrainingModeInfo();
+   if(typeof renderWordList === "function") renderWordList();
+   if(typeof updateStats === "function") updateStats();
+   return true;
+ }catch(e){
+   console.warn("applyImportedSettings failed", e);
+   return false;
+ }
+}
+
+function loadSettings(){
+ try{
+   const raw = localStorage.getItem(SETTINGS_KEY);
+   if(!raw) {
+     saveSettings();
+     return;
+   }
+   const settings = JSON.parse(raw);
+   applyImportedSettings(settings);
+ }catch(e){
+   console.warn("loadSettings failed; keeping HTML defaults", e);
+ }
+}
+
+function setupSettingsPersistence(){
+ SETTINGS_CONTROL_IDS.forEach(id=>{
+   const el=$(id);
+   if(!el) return;
+   el.addEventListener("change", saveSettings);
+   el.addEventListener("input", saveSettings);
+ });
+}
+
+
 function backupFilename(ext){
   const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.3",createdAt:new Date().toISOString(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.4",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");
   localStorage.setItem("lastBackupAt",new Date().toISOString());
   updateBackupInfo();
 }
+
 function createBackupCsv(){
   exportCsv();
   changesSinceBackup=0;
@@ -3966,6 +4052,8 @@ function migrateLegacyWords(){
 
 
 loadVocabulary();
+loadSettings();
+setupSettingsPersistence();
 migrateLegacyWords();normalizeMasteredMemory();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
 
 try{
