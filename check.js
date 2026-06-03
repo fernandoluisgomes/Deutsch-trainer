@@ -1,0 +1,3469 @@
+
+const STORAGE_KEY="vocabularyGermanTrainer_v5"; // mantém os dados existentes da V5
+const MASTER_LIMIT=7;
+let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;let sessionWords=new Set(),sessionPlannedWords=new Set(),sessionDoneWords=new Set(),sessionReviewCount=0,sessionPlannedReviews=0,sessionDueReviewsTotal=0,sessionRoundStreak={},sessionLastCorrect={};let sessionStartedAt=Date.now(),sessionInitialSnapshot={};window.sessionCardCounter=0;let sessionMasteredRemembered=0,sessionMasteredForgotten=0,sessionRecoveredConfirmations=0,sessionFailedConfirmations=0;
+let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let micMasterOn=false;let autoMicTimer=null;let autoMicRetryTimer=null;let appIsSpeaking=false;let appSpeechCooldownUntil=0;let autoMicSilentStartedAt=0;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
+
+function $(id){return document.getElementById(id)}
+function normalize(t){return (t||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function showNotice(target,msg,type="ok"){const b=$(target);b.className="notice "+type;b.innerHTML=msg;setTimeout(()=>{b.className="";b.innerHTML=""},4000)}
+function loadVocabulary(){try{vocabulary=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]")}catch(e){vocabulary=[]}vocabulary.forEach(x=>{if(x.correctStreak===undefined)x.correctStreak=0;if(x.wrongStreak===undefined)x.wrongStreak=0;if(x.difficultyBoost===undefined)x.difficultyBoost=false;if(x.mastered===undefined)x.mastered=false;
+if(x.memoryLevel===undefined)x.memoryLevel=0;
+if(x.studyState===undefined)x.studyState="new";
+if(x.successCount===undefined)x.successCount=0;
+if(x.failCount===undefined)x.failCount=0;
+if(x.seenCount===undefined)x.seenCount=0;
+if(x.nextReviewAt===undefined)x.nextReviewAt=0;
+if(x.lastReviewedAt===undefined)x.lastReviewedAt=0;
+if(x.reviewIntervalDays===undefined)x.reviewIntervalDays=0;
+if(x.sessionDueAt===undefined)x.sessionDueAt=0;
+if(x.stabilityScore===undefined)x.stabilityScore=0;
+if(x.xp===undefined)x.xp=0;
+if(x.learningState===undefined)x.learningState = x.mastered ? "mastered" : "auto";
+if(x.totalReviews===undefined)x.totalReviews=0;
+if(x.lastSessionSeen===undefined)x.lastSessionSeen=0;
+if(x.retentionCheckPending===undefined)x.retentionCheckPending=false;
+if(x.retentionCheckSuccesses===undefined)x.retentionCheckSuccesses=0;
+if(x.retentionCheckFails===undefined)x.retentionCheckFails=0;
+if(x.manualMastered===undefined)x.manualMastered=false;
+if(x.bestSpacing===undefined)x.bestSpacing=0;
+if(x.lastFailedSpacing===undefined)x.lastFailedSpacing=0;
+if(x.lastTestedSpacing===undefined)x.lastTestedSpacing=0;
+if(x.presentedSpacing===undefined)x.presentedSpacing=0;
+if(x.presentedSpacingSource===undefined)x.presentedSpacingSource="";
+if(x.fragilityDebt===undefined)x.fragilityDebt=0;
+if(x.errorStats===undefined)x.errorStats={memory:0,article:0,grammar:0};migrateLegacyMasteryState(x)})}
+function saveVocabulary(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
+  changesSinceBackup++;
+  localStorage.setItem("changesSinceBackup", String(changesSinceBackup));
+  updateBackupInfo();
+}
+function parseSynonyms(t){return t?t.split(",").map(s=>s.trim()).filter(Boolean):[]}
+function getAllAnswers(c){const a=[c.de,...(c.synonyms||[])],u=[];for(const x of a)if(x&&!u.some(y=>normalize(y)===normalize(x)))u.push(x);return u}
+function allGermanTerms(c){return getAllAnswers(c).map(normalize)}
+function activeVocabulary(){ return vocabulary.filter(x => isLearningCandidate(x)); }
+
+function reviewVocabulary(){
+return vocabulary.filter(x => (x.learningState||"auto") !== "suspended");
+}
+
+
+function cleanGermanForSpeech(text){
+  const value = (text || "").trim();
+  if($("speakArticle") && $("speakArticle").checked) return value;
+  return value.replace(/^(der|die|das)\s+/i,"").trim() || value;
+}
+
+function escapeHtml(text){
+  return (text || "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+  }[char]));
+}
+
+function formatGerman(text){
+  const value = (text || "").trim();
+  const match = value.match(/^(der|die|das)\s+(.+)$/i);
+  if(!match) return escapeHtml(value);
+  const article = match[1].toLowerCase();
+  const rest = match[2];
+  return `<span class="article article-${article}">${article}</span>${escapeHtml(rest)}`;
+}
+
+
+function markAppSpeechStart(){
+  appIsSpeaking = true;
+  appSpeechCooldownUntil = Date.now() + 1500;
+}
+
+function markAppSpeechEnd(){
+  appIsSpeaking = false;
+  appSpeechCooldownUntil = Date.now() + 1500;
+}
+
+function appAudioActive(){
+  return appIsSpeaking ||
+         Date.now() < appSpeechCooldownUntil ||
+         (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending));
+}
+
+function pauseRecognitionForAppSpeech(){
+  if(recognition && isListening){
+    try { recognition.stop(); } catch(e) {}
+  }
+  isListening = false;
+  if(micMasterOn && isAutoMicMode()){
+    setMicStatus("preparing", "preparação");
+  }
+}
+
+function speakGerman(text){
+  if(!$("speechEnabled") || !$("speechEnabled").checked) return;
+  if(!("speechSynthesis" in window)) return;
+  pauseRecognitionForAppSpeech();
+  const utterance = new SpeechSynthesisUtterance(cleanGermanForSpeech(text));
+  utterance.lang = "de-DE";
+  utterance.rate = 0.85;
+  utterance.pitch = 1;
+  utterance.onstart = markAppSpeechStart;
+  utterance.onend = markAppSpeechEnd;
+  utterance.onerror = markAppSpeechEnd;
+  window.speechSynthesis.cancel();
+  markAppSpeechStart();
+  window.speechSynthesis.speak(utterance);
+}
+
+function speakPortuguese(text){
+  if(!$("speakPortuguese") || !$("speakPortuguese").checked) return;
+  if(!("speechSynthesis" in window)) return;
+
+  pauseRecognitionForAppSpeech();
+
+  const utterance = new SpeechSynthesisUtterance(text || "");
+  utterance.lang = "pt-PT";
+  utterance.rate = 0.82;
+  utterance.pitch = 1;
+  utterance.onstart = markAppSpeechStart;
+  utterance.onend = markAppSpeechEnd;
+  utterance.onerror = markAppSpeechEnd;
+
+  // Pausa maior para não cortar a resposta alemã anterior.
+  // Não usamos cancel() aqui, porque isso interrompia a voz alemã.
+  markAppSpeechStart();
+  setTimeout(() => {
+    if(window.speechSynthesis.speaking){
+      setTimeout(() => window.speechSynthesis.speak(utterance), 1200);
+    } else {
+      window.speechSynthesis.speak(utterance);
+    }
+  }, 1300);
+}
+
+function stripGermanArticle(text){
+  return (text||"").replace(/^(der|die|das)\s+/i,"").trim();
+}
+
+function normalizeVoice(text){
+  return normalize((text||"")
+    .replace(/[.,!?;:]/g," ")
+    .replace(/\s+/g," ")
+  );
+}
+
+function voiceForms(text){
+  const original = normalizeVoice(text);
+  const noArticle = normalizeVoice(stripGermanArticle(text));
+  const forms = [original];
+  if(!$("requireArticle") || !$("requireArticle").checked) forms.push(noArticle);
+  return [...new Set(forms.filter(Boolean))];
+}
+
+function levenshtein(a,b){
+  const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+  for(let i=0;i<=a.length;i++)dp[i][0]=i;
+  for(let j=0;j<=b.length;j++)dp[0][j]=j;
+  for(let i=1;i<=a.length;i++){
+    for(let j=1;j<=b.length;j++){
+      dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function isCloseEnough(spoken, expected){
+  if(spoken === expected) return true;
+  const strictness = $("voiceStrictness") ? $("voiceStrictness").value : "normal";
+  if(strictness === "strict") return false;
+  const dist = levenshtein(spoken, expected);
+  const maxLen = Math.max(spoken.length, expected.length);
+  const threshold = strictness === "loose" ? Math.max(1, Math.floor(maxLen*0.28)) : Math.max(1, Math.floor(maxLen*0.18));
+  return maxLen >= 5 && dist <= threshold;
+}
+
+
+const GERMAN_ARTICLES = ["der","die","das","den","dem","des","ein","eine","einen","einem","einer"];
+const CRITICAL_WORDS = [
+  "für","mit","zu","auf","an","in","bei","nach","von","über","unter","vor","aus","um","gegen",
+  "dich","dir","mich","mir","ihn","ihm","sie","ihnen","uns","euch","sich",
+  "ich","du","er","es","wir","ihr"
+];
+
+function tokenizeGerman(text){
+  return normalizeVoice(text)
+    .replace(/[“”„"]/g,"")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function removeOptionalArticles(tokens){
+  if($("requireArticle") && $("requireArticle").checked) return tokens;
+  return tokens.filter(t => !GERMAN_ARTICLES.includes(t));
+}
+
+function isSentenceLike(text){
+  return tokenizeGerman(text).length >= 3;
+}
+
+function criticalSequence(tokens){
+  return tokens.filter(t => CRITICAL_WORDS.includes(t));
+}
+
+function hasStrictGrammarMismatch(spoken, expected){
+  // Esta opção controla APENAS regras gramaticais em frases.
+  // Se estiver desligada, frases ficam mais permissivas.
+  if(!$("strictGrammarRecognition") || !$("strictGrammarRecognition").checked) return false;
+
+  const spokenTokens = removeOptionalArticles(tokenizeGerman(spoken));
+  const expectedTokens = removeOptionalArticles(tokenizeGerman(expected));
+
+  // Só aplicamos esta regra forte a frases/expressões, não a palavras isoladas.
+  if(expectedTokens.length < 3) return false;
+
+  const spokenCritical = criticalSequence(spokenTokens).join("|");
+  const expectedCritical = criticalSequence(expectedTokens).join("|");
+
+  if(spokenCritical !== expectedCritical) return true;
+
+  const minLen = Math.min(spokenTokens.length, expectedTokens.length);
+
+  for(let i=0;i<minLen;i++){
+    const s = spokenTokens[i];
+    const e = expectedTokens[i];
+
+    if(s === e) continue;
+
+    // Com gramática rigorosa ON, preposições/pronomes/palavras curtas críticas falham.
+    const criticalMismatch =
+      CRITICAL_WORDS.includes(s) ||
+      CRITICAL_WORDS.includes(e);
+
+    if(criticalMismatch) return true;
+
+    if((s.length <= 3 || e.length <= 3) && s !== e){
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function smartSimilarity(spoken, expected){
+  const s = removeOptionalArticles(tokenizeGerman(spoken));
+  const e = removeOptionalArticles(tokenizeGerman(expected));
+
+  const spokenNorm = s.join(" ");
+  const expectedNorm = e.join(" ");
+
+  if(spokenNorm === expectedNorm) return 1;
+
+  if(!s.length || !e.length) return 0;
+
+  let same = 0;
+  for(const token of s){
+    if(e.includes(token)) same++;
+  }
+
+  return same / Math.max(s.length, e.length);
+}
+
+
+function firstToken(text){
+  const tokens = tokenizeGerman(text);
+  return tokens.length ? tokens[0] : "";
+}
+
+function hasRequiredArticleMismatch(spoken, expected){
+  if(!$("requireArticle") || !$("requireArticle").checked) return false;
+
+  const expectedArticle = firstToken(expected);
+
+  // Só aplica quando a resposta esperada começa com artigo.
+  if(!GERMAN_ARTICLES.includes(expectedArticle)) return false;
+
+  const spokenArticle = firstToken(spoken);
+
+  // Artigo obrigatório: tem de existir e ser exatamente igual.
+  return spokenArticle !== expectedArticle;
+}
+
+function isSmartCloseEnough(spoken, expected){
+  // Artigo obrigatório é validado antes de qualquer tolerância.
+  // Esta regra é independente da opção de gramática das frases.
+  if(hasRequiredArticleMismatch(spoken, expected)){
+    return false;
+  }
+
+  const spokenClean = removeOptionalArticles(tokenizeGerman(spoken)).join(" ");
+  const expectedClean = removeOptionalArticles(tokenizeGerman(expected)).join(" ");
+
+  if(spokenClean === expectedClean) return true;
+
+  if(hasStrictGrammarMismatch(spoken, expected)) return false;
+
+  const sentence = isSentenceLike(expected);
+
+  if(sentence){
+    const strictGrammarOn = $("strictGrammarRecognition") && $("strictGrammarRecognition").checked;
+    const threshold = strictGrammarOn ? 0.90 : 0.70;
+    return smartSimilarity(spoken, expected) >= threshold;
+  }
+
+  // Palavras isoladas continuam tolerantes, mas só depois da validação do artigo.
+  return isCloseEnough(spokenClean, expectedClean);
+}
+
+function checkVoiceAnswer(spokenText){
+  if(!currentCard) return false;
+
+  const accepted = getAllAnswers(currentCard);
+
+  for(const ans of accepted){
+    if(isSmartCloseEnough(spokenText, ans)){
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+function showVoiceCardFeedback(correct, heard, expected){
+  const card = $("card");
+  if(correct){
+    card.className = "card green revealed";
+    card.innerHTML = `
+      <div class="answer-title">✅ ${formatGerman(expected)}</div>
+    `;
+  }else{
+    card.className = "card red revealed";
+    card.innerHTML = `
+      <div class="answer-title">❌ ${heard || "?"}</div>
+      <div style="margin-top:14px">✅ ${formatGerman(expected)}</div>
+    `;
+  }
+}
+
+function showVoiceDebug(correct, heard, accepted, alternatives){
+  $("voiceResult").innerHTML = `
+    <div class='${correct ? "voiceOk" : "voiceBad"}'>${correct ? "✅" : "❌"} ${heard || "?"}</div>
+    <div class='small' style='margin-top:8px;text-align:left'>
+      <strong>Ouvi:</strong><br>
+      ${alternatives.map((a,i)=>`${i+1}. ${a}`).join("<br>")}
+      <br><br>
+      <strong>Aceites:</strong><br>
+      ${accepted.join(" · ")}
+      ${hasRequiredArticleMismatch(heard, accepted[0] || "") ? "<br><br><span class='voiceBad'>Artigo incorreto ou em falta.</span>" : ""}${hasStrictGrammarMismatch(heard, accepted[0] || "") ? "<br><span class='voiceBad'></span>" : ""}
+    </div>
+  `;
+}
+
+
+function exactVoiceMatch(spokenText, expectedText){
+  return normalizeVoice(spokenText) === normalizeVoice(expectedText);
+}
+
+function wordWithoutArticleMatch(spokenText, expectedText){
+  return normalizeVoice(stripGermanArticle(spokenText)) === normalizeVoice(stripGermanArticle(expectedText));
+}
+
+function bestExpectedAnswer(spokenText){
+  if(!currentCard) return "";
+  const accepted = getAllAnswers(currentCard);
+  const exact = accepted.find(a => exactVoiceMatch(spokenText, a));
+  if(exact) return exact;
+
+  const noArticle = accepted.find(a => wordWithoutArticleMatch(spokenText, a));
+  if(noArticle) return noArticle;
+
+  return accepted[0] || "";
+}
+
+function shouldRepeatHeard(spokenText){
+  if(!currentCard) return false;
+  const accepted = getAllAnswers(currentCard);
+  return accepted.some(a => exactVoiceMatch(spokenText, a));
+}
+
+function speakFeedbackForVoice(correct, heard){
+  const expected = bestExpectedAnswer(heard);
+  if(correct && shouldRepeatHeard(heard)){
+    speakGerman(heard);
+  }else{
+    speakGerman(expected);
+  }
+  return expected;
+}
+
+
+function setMicStatus(state, text){
+  const dot = $("micStatusDot");
+  const label = $("micStatusText");
+  if(dot) dot.className = "micStatusDot " + state;
+  if(label) label.textContent = text;
+}
+
+function setMicButton(on){
+  if(on){
+    $("micBtn").classList.add("micOn");
+    $("micBtn").textContent = "🎤 Desligar microfone";
+  }else{
+    $("micBtn").classList.remove("micOn");
+    $("micBtn").textContent = "🎤 Ligar microfone";
+  }
+}
+
+function isAutoMicMode(){
+  return $("autoMicEnabled") && $("autoMicEnabled").checked;
+}
+
+function shouldWaitForPortugueseBeforeMic(){
+  return $("waitForPortugueseBeforeMic") && $("waitForPortugueseBeforeMic").checked;
+}
+
+function getAutoMicMaxSilentMs(){
+  const minutes = $("autoMicMaxSilentMinutes") ? Number($("autoMicMaxSilentMinutes").value) : 5;
+  return minutes * 60 * 1000;
+}
+
+function resetAutoMicSilentTimer(){
+  autoMicSilentStartedAt = Date.now();
+}
+
+function autoMicSilenceLimitReached(){
+  if(!autoMicSilentStartedAt) resetAutoMicSilentTimer();
+  return Date.now() - autoMicSilentStartedAt > getAutoMicMaxSilentMs();
+}
+
+function clearAutoMicTimers(){
+  clearTimeout(autoMicTimer);
+  clearTimeout(autoMicRetryTimer);
+}
+
+function stopAllMicActivity(){
+  micMasterOn = false;
+  autoMicSilentStartedAt = 0;
+  clearAutoMicTimers();
+  if(recognition && isListening){
+    try{ recognition.stop(); }catch(e){}
+  }
+  isListening = false;
+  setMicButton(false);
+  setMicStatus("off", "desligado");
+}
+
+function tryStartListening(autoStarted=false){
+  if(!micMasterOn && autoStarted) return;
+  if(isListening) return;
+  requestWakeLock();
+
+  if(!$("voiceEnabled") || !$("voiceEnabled").checked){
+    $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz desativado na configuração.</span>";
+    stopAllMicActivity();
+    return;
+  }
+
+  if(!currentCard) return;
+  if(!recognition) recognition = setupRecognition();
+  if(!recognition) return;
+
+  if(shouldWaitForPortugueseBeforeMic() && appAudioActive()){
+    setMicStatus("preparing", "preparação");
+    autoMicRetryTimer = setTimeout(()=>scheduleAutoMic(), 50);
+    return;
+  }
+
+  setMicStatus("preparing", "preparação");
+
+  try{
+    recognition.start();
+  }catch(e){
+    if(autoStarted && micMasterOn && isAutoMicMode()){
+      autoMicRetryTimer = setTimeout(()=>tryStartListening(true), 1500);
+    }else{
+      $("voiceResult").innerHTML = "<span class='voiceBad'>Não consegui iniciar o microfone.</span>";
+      if(!isAutoMicMode()) stopAllMicActivity();
+    }
+  }
+}
+
+
+function portugueseSpeechIsEnabled(){
+ const ids=["speakPortuguese","speechPt","ptSpeechEnabled","speakPt","autoSpeakPortuguese","readPortuguese"];
+ for(const id of ids){
+   const el=$(id);
+   if(el) return !!el.checked;
+ }
+
+ // Fallback by label text: look for checkbox near "Ler palavra portuguesa"
+ const inputs=[...document.querySelectorAll('input[type="checkbox"]')];
+ for(const input of inputs){
+   const label=input.closest("label")?.innerText || "";
+   if(label.toLowerCase().includes("portuguesa") || label.toLowerCase().includes("português")){
+     return !!input.checked;
+   }
+ }
+
+ return true;
+}
+
+function scheduleAutoMicFastIfNoPortuguese(){
+ if(!micMasterOn || !isAutoMicMode()) return;
+ if(portugueseSpeechIsEnabled()) return;
+
+ setTimeout(()=>{
+   if(micMasterOn && isAutoMicMode()){
+     tryStartListening(true);
+   }
+ }, 250);
+}
+
+function retryAutoMicStart(){
+ if(!micMasterOn || !isAutoMicMode()) return;
+
+ let tries=0;
+ const attempt=()=>{
+   if(!micMasterOn || !isAutoMicMode()) return;
+   tries++;
+   try{
+     tryStartListening(true);
+   }catch(e){}
+   if(tries<3){
+     setTimeout(attempt, tries*500);
+   }
+ };
+ attempt();
+}
+
+function scheduleAutoMic(){
+  clearAutoMicTimers();
+
+  if(!micMasterOn) return;
+  if(!isAutoMicMode()) return;
+  if(!currentCard) return;
+
+  const delay = $("autoMicDelay") ? Number($("autoMicDelay").value) : 3000;
+
+  // Delay configurado: apenas antes da primeira tentativa de ouvir após a carta/voz PT.
+  setMicStatus("preparing", "preparação");
+
+  autoMicTimer = setTimeout(() => {
+    if(appAudioActive()){
+      // Se a app ainda está a falar, espera em pequenos ciclos, sem reaplicar o delay completo.
+      autoMicRetryTimer = setTimeout(() => scheduleAutoMic(), 300);
+      return;
+    }
+
+    tryStartListening(true);
+  }, delay);
+}
+
+function retryAutoMicAfterSilence(){
+  clearAutoMicTimers();
+
+  if(!micMasterOn) return;
+  if(!isAutoMicMode()) return;
+  if(!currentCard) return;
+
+  if(autoMicSilenceLimitReached()){
+    stopAllMicActivity();
+    $("voiceResult").innerHTML = "<span class='small'>Microfone automático desligado após período de silêncio.</span>";
+    return;
+  }
+
+  setMicStatus("preparing", "preparação");
+
+  // Retry rápido após silêncio: não usa a configuração "espera antes de ouvir".
+  autoMicRetryTimer = setTimeout(() => {
+    if(shouldWaitForPortugueseBeforeMic() && appAudioActive()){
+      retryAutoMicAfterSilence();
+      return;
+    }
+
+    tryStartListening(true);
+  }, 600);
+}
+
+function setupRecognition(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    $("voiceResult").innerHTML = "<span class='voiceBad'>Reconhecimento de voz não disponível neste browser.</span>";
+    return null;
+  }
+  const rec = new SpeechRecognition();
+  rec.lang = "de-DE";
+  rec.interimResults = false;
+  rec.continuous = false;
+  rec.maxAlternatives = 5;
+
+  rec.onstart = () => {
+    isListening = true;
+    setMicButton(true);
+    setMicStatus("listening", "a ouvir…");
+    $("voiceResult").innerHTML = "<span class='voiceListening'>A ouvir... diz a resposta em alemão</span>";
+  };
+
+  rec.onend = () => {
+    isListening = false;
+
+    if(isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+    }else{
+      stopAllMicActivity();
+    }
+  };
+
+  rec.onerror = (event) => {
+    isListening = false;
+
+    if(event.error === "no-speech" && isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+      return;
+    }
+
+    if(event.error !== "no-speech"){
+      $("voiceResult").innerHTML = `<span class='voiceBad'>Erro no microfone: ${event.error}</span>`;
+    }
+
+    if(isAutoMicMode() && micMasterOn){
+      retryAutoMicAfterSilence();
+    }else{
+      stopAllMicActivity();
+    }
+  };
+
+  rec.onresult = (event) => {
+    resetAutoMicSilentTimer();
+    const alternatives = Array.from(event.results[0]).map(r => r.transcript);
+    const best = alternatives[0] || "";
+    const accepted = getAllAnswers(currentCard);
+    const expected = accepted[0] || "";
+    const correct = alternatives.some(t => checkVoiceAnswer(t));
+
+    if($("voiceDebug") && $("voiceDebug").checked){
+      showVoiceDebug(correct, best, accepted, alternatives);
+    }else{
+      $("voiceResult").innerHTML = "";
+    }
+
+    const spokenExpected = speakFeedbackForVoice(correct, best);
+
+    if(correct){
+      registerCorrect();
+      correctCount++;
+      removeCurrentFromQueue();
+      showVoiceCardFeedback(true, best, spokenExpected || expected);
+      updateStats();
+    }else{
+      const expectedForError = spokenExpected || expected || bestExpectedAnswer(best);
+      const classifiedError = dt52Classify(expectedForError, best);
+      registerWrong(classifiedError, best);
+      wrongCount++;
+      showVoiceCardFeedback(false, best, spokenExpected || expected);
+      updateStats();
+    }
+
+    setTimeout(() => {
+      nextCard();
+
+      if(micMasterOn && isAutoMicMode()){
+        // O scheduleAutoMic já respeita appAudioActive, mas deixamos uma margem extra.
+        scheduleAutoMic();
+retryAutoMicStart();
+      }else if(micMasterOn && !isAutoMicMode()){
+        stopAllMicActivity();
+      }
+    }, 5000);
+  };
+
+  return rec;
+}
+
+function startVoiceRecognition(autoStarted=false){
+  // Quando vem de um clique, o browser passa MouseEvent. Isto deve contar como manual.
+  if(autoStarted && typeof autoStarted === "object") autoStarted = false;
+
+  if(!autoStarted){
+    if(micMasterOn){
+      stopAllMicActivity();
+      $("voiceResult").innerHTML = "<span class='small'>Microfone desligado.</span>";
+      return;
+    }
+
+    micMasterOn = true;
+    requestWakeLock();
+    resetAutoMicSilentTimer();
+    setMicButton(true);
+    setMicStatus("preparing", "preparação");
+  }
+
+  tryStartListening(autoStarted);
+}
+
+function stopVoiceRecognition(){
+  stopAllMicActivity();
+  $("voiceResult").innerHTML = "";
+}
+
+
+function renderCurrentTrainingCard(){
+ const card=$("card");
+ if(!card || !currentCard) return;
+ card.className="card";
+ card.innerHTML=currentCard.pt;
+ $("answerArea").classList.add("hidden");
+ if($("voiceResult")) $("voiceResult").innerHTML="";
+ updateStats();
+ renderProgress();
+ updateSessionProgress();
+}
+
+function resumePractice(){
+ if(currentCard){
+   renderCurrentTrainingCard();
+   return;
+ }
+ if(practiceQueue && practiceQueue.length){
+   nextCard();
+   return;
+ }
+ startPractice();
+}
+
+function switchPage(page){
+if(page !== "train") stopAllMicActivity();
+["train","statsPage","add","db","config"].forEach(p=>$("page-"+p).classList.toggle("hidden",p!==page));
+document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.page===page));
+if(page==="db") renderWordList();
+if(page==="statsPage") renderStatsPage();
+if(page==="train") resumePractice();
+}
+
+function canonicalTextForDuplicate(text){
+ return normalize(text||"")
+   .replace(/[.!?;:]+$/g,"")
+   .replace(/[.,!?;:“”„"]/g," ")
+   .replace(/\s+/g," ")
+   .trim();
+}
+
+function canonicalGermanForDuplicate(text){
+ const base=canonicalTextForDuplicate(text);
+ const tokens=base.split(/\s+/).filter(Boolean);
+ const articles=["der","die","das","den","dem","des","ein","eine","einen","einem","einer"];
+ // Só remove artigo inicial em termos curtos, para evitar transformar "Das hängt..." em "hängt...".
+ if(tokens.length>0 && tokens.length<=3 && articles.includes(tokens[0])){
+   return tokens.slice(1).join(" ");
+ }
+ return base;
+}
+
+function allGermanTermsForDuplicate(c){
+ return getAllAnswers(c).map(canonicalGermanForDuplicate).filter(Boolean);
+}
+
+function primaryDuplicateMatches(pt,de,ignoreIndex=null){
+ const ptNorm=canonicalTextForDuplicate(pt);
+ const deNorm=canonicalGermanForDuplicate(de);
+ const matches=[];
+ vocabulary.forEach((item,i)=>{
+   if(ignoreIndex!==null && i===ignoreIndex) return;
+   const ptSame=!!ptNorm && canonicalTextForDuplicate(item.pt)===ptNorm;
+   const deSame=!!deNorm && canonicalGermanForDuplicate(item.de)===deNorm;
+   if(ptSame || deSame){
+     matches.push({index:i,item,ptSame,deSame,hardDuplicate:true});
+   }
+ });
+ return matches;
+}
+
+function synonymOverlapMatches(pt,de,synonyms,ignoreIndex=null){
+ const incomingSyn=(synonyms||[]).map(canonicalGermanForDuplicate).filter(Boolean);
+ const deNorm=canonicalGermanForDuplicate(de);
+ const matches=[];
+ vocabulary.forEach((item,i)=>{
+   if(ignoreIndex!==null && i===ignoreIndex) return;
+   const existingTerms=allGermanTermsForDuplicate(item);
+   const synonymOverlap=incomingSyn.filter(x=>existingTerms.includes(x));
+   const existingSynonyms=(item.synonyms||[]).map(canonicalGermanForDuplicate).filter(Boolean);
+   const deAsExistingSynonym=!!deNorm && existingSynonyms.includes(deNorm);
+   if(synonymOverlap.length || deAsExistingSynonym){
+     matches.push({index:i,item,synonymOverlap,deAsExistingSynonym,warningOnly:true});
+   }
+ });
+ return matches;
+}
+
+function findDuplicates(pt,de,synonyms,ignoreIndex=null){
+ const hard=primaryDuplicateMatches(pt,de,ignoreIndex);
+ const warnings=synonymOverlapMatches(pt,de,synonyms,ignoreIndex);
+ const byIndex=new Map();
+ hard.forEach(m=>byIndex.set(m.index,{...m,germanOverlap:[]}));
+ warnings.forEach(m=>{
+   const existing=byIndex.get(m.index)||{index:m.index,item:m.item,ptSame:false,deSame:false,germanOverlap:[]};
+   existing.warningOnly=!existing.hardDuplicate;
+   existing.germanOverlap=[...(existing.germanOverlap||[]),...(m.synonymOverlap||[])];
+   existing.deAsExistingSynonym=!!m.deAsExistingSynonym;
+   byIndex.set(m.index,existing);
+ });
+ return [...byIndex.values()];
+}
+function mergeSynonyms(existing, incoming){
+  const combined = [...(existing || []), ...(incoming || [])];
+  const unique = [];
+  combined.forEach(value => {
+    if(value && !unique.some(x => canonicalGermanForDuplicate(x) === canonicalGermanForDuplicate(value))) unique.push(value);
+  });
+  return unique;
+}
+function findBestExistingIndex(pt,de,synonyms){
+  const matches = primaryDuplicateMatches(pt,de,null);
+  if(!matches.length) return -1;
+  const deNorm = canonicalGermanForDuplicate(de);
+  const ptNorm = canonicalTextForDuplicate(pt);
+
+  // Prioridade: DE principal igual. Evita atualizar a carta errada se PT e DE colidirem com itens diferentes.
+  const exactDe = matches.find(m => canonicalGermanForDuplicate(m.item.de) === deNorm);
+  if(exactDe) return exactDe.index;
+
+  const exactPt = matches.find(m => canonicalTextForDuplicate(m.item.pt) === ptNorm);
+  return exactPt ? exactPt.index : matches[0].index;
+}
+function renderDuplicateWarning(){
+const editIndex=$("editIndex").value===""?null:Number($("editIndex").value);
+const matches=findDuplicates($("ptWord").value,$("deWord").value,parseSynonyms($("synonyms").value),editIndex),box=$("duplicateNotice");
+if(!matches.length){box.className="";box.innerHTML="";return matches}
+const hard=matches.filter(m=>m.hardDuplicate || m.ptSame || m.deSame);
+box.className="notice warn";
+box.innerHTML="<strong>"+(hard.length?"Duplicado real encontrado:":"Sobreposição de termos encontrada:")+"</strong><ul class='dup-list'>"+
+matches.map(m=>`<li>${m.item.pt} → ${m.item.de}${m.ptSame?"<br>Mesmo significado em português.":""}${m.deSame?"<br>Mesma resposta alemã principal.":""}${m.germanOverlap&&m.germanOverlap.length?`<br>Sinónimos/termos repetidos: ${m.germanOverlap.join(", ")}`:""}${m.deAsExistingSynonym?"<br>A resposta alemã principal já existe como sinónimo noutra carta.":""}${!(m.hardDuplicate||m.ptSame||m.deSame)?"<br><span class='small'>Aviso apenas — não bloqueia a importação.</span>":""}</li>`).join("")+
+"</ul><span class='small'>Duplicados reais são PT/DE principal igual, comparados sem pontuação final e com artigos curtos normalizados. Sobreposição de sinónimos é apenas aviso.</span>";return matches;
+}
+
+function resetLearningForCurrentEdit(){
+ const editVal=$("editIndex").value;
+ if(editVal===""){showNotice("saveNotice","Guarda primeiro a palavra antes de resetar aprendizagem.","warn");return}
+ const idx=Number(editVal), w=vocabulary[idx];
+ if(!w)return;
+ w.memoryLevel=0;w.stabilityScore=0;w.xp=0;w.bestSpacing=0;w.lastFailedSpacing=0;w.lastTestedSpacing=0;w.presentedSpacing=0;w.presentedSpacingSource="";w.fragilityDebt=0;w.studyState="new";w.learningState="auto";w.mastered=false;w.manualMastered=false;w.retentionCheckPending=false;w.retentionCheckSuccesses=0;w.retentionCheckFails=0;w.difficultyBoost=false;
+ w.correctStreak=0;w.wrongStreak=0;w.sessionDueAt=0;w.nextReviewAt=0;w.reviewIntervalDays=0;
+ saveVocabulary();showNotice("saveNotice","Aprendizagem resetada para esta palavra.","ok");renderWordList();startPractice();
+}
+
+function saveWord(){
+const pt=$("ptWord").value.trim();
+const de=$("deWord").value.trim();
+const syn=parseSynonyms($("synonyms").value);
+const sent=$("sentence").value.trim();
+const editVal=$("editIndex").value;
+const learningState=$("learningState") ? $("learningState").value : "auto";
+const manualMemoryInput=$("manualMemoryLevel") ? $("manualMemoryLevel").value.trim() : "";
+const manualMemoryValue=manualMemoryInput==="" ? null : Math.max(minMemoryLevel ? minMemoryLevel() : -50,Math.min(100,Number(manualMemoryInput)));
+const manualStabilityInput=$("manualStabilityScore") ? $("manualStabilityScore").value.trim() : "";
+const manualStabilityValue=manualStabilityInput==="" ? null : Math.max(0,Math.min(100,Number(manualStabilityInput)));
+const manualMastered=learningState==="mastered";
+const mastered=manualMastered;
+
+if(!pt||!de){
+  showNotice("saveNotice","Preenche pelo menos português e alemão.","error");
+  return;
+}
+
+let previous = editVal==="" ? {} : (vocabulary[Number(editVal)] || {});
+
+const item={
+  ...previous,
+  pt,de,synonyms:syn,sentence:sent,
+  createdAt:previous.createdAt||Date.now(),
+  updatedAt:Date.now(),
+  learningState,
+  mastered,
+  manualMastered,
+  retentionCheckPending: manualMastered ? false : (previous.retentionCheckPending||false),
+  retentionCheckSuccesses: manualMastered ? 0 : (previous.retentionCheckSuccesses||0),
+  retentionCheckFails: manualMastered ? 0 : (previous.retentionCheckFails||0),
+  correctStreak: mastered ? Math.max(previous.correctStreak||0, 3) : (previous.correctStreak||0),
+  wrongStreak: mastered ? 0 : (previous.wrongStreak||0),
+  difficultyBoost: mastered ? false : (previous.difficultyBoost||false),
+  memoryLevel: manualMemoryValue!==null ? manualMemoryValue : (mastered ? Math.max(previous.memoryLevel||0,masterThreshold ? masterThreshold() : 85) : (previous.memoryLevel??0)),
+  memoryManualAdjusted: manualMemoryValue!==null ? true : (previous.memoryManualAdjusted||false),
+  stabilityScore: manualStabilityValue!==null ? manualStabilityValue : (mastered ? Math.max(previous.stabilityScore||0,stabilityMasterThreshold ? stabilityMasterThreshold() : 50) : (previous.stabilityScore??0)),
+  stabilityManualAdjusted: manualStabilityValue!==null ? true : (previous.stabilityManualAdjusted||false),
+  bestSpacing: previous.bestSpacing||0,
+  lastFailedSpacing: previous.lastFailedSpacing||0,
+  lastTestedSpacing: previous.lastTestedSpacing||0,
+  presentedSpacing: previous.presentedSpacing||0,
+  presentedSpacingSource: previous.presentedSpacingSource||"",
+  fragilityDebt: clampFragilityDebt(previous.fragilityDebt||0),
+  xp: previous.xp||0,
+  studyState: mastered ? "mastered" : (previous.studyState||"new"),
+  successCount: previous.successCount||0,
+  failCount: previous.failCount||0,
+  seenCount: previous.seenCount||0,
+  errorStats: previous.errorStats || {memory:0,article:0,grammar:0},
+  sessionDueAt:0,
+  lastSessionSeen:0,
+  nextReviewAt:previous.nextReviewAt||0,
+  reviewIntervalDays:previous.reviewIntervalDays||0,
+  lastReviewedAt:previous.lastReviewedAt||0
+};
+
+if(learningState==="suspended"){
+  item.mastered=false;
+  item.studyState="suspended";
+}
+if(learningState==="focus"){
+  item.mastered=false;
+  if(item.studyState==="mastered" || item.studyState==="suspended"){
+    item.studyState="learning";
+  }
+}
+if(learningState==="auto" && previous.learningState && previous.learningState!=="auto"){
+  item.mastered=false;
+  if(item.studyState==="mastered" || item.studyState==="suspended"){
+    item.studyState="learning";
+  }
+}
+
+if(editVal===""){
+  vocabulary.push(item);
+  showNotice("saveNotice","Palavra adicionada.","ok");
+}else{
+  vocabulary[Number(editVal)]=item;
+  showNotice("saveNotice","Palavra atualizada.","ok");
+}
+
+saveVocabulary();
+clearForm();
+renderWordList();
+startPractice();
+}
+
+function clearForm(){
+$("editIndex").value="";
+$("formTitle").textContent="Adicionar vocabulário";
+$("ptWord").value="";
+$("deWord").value="";
+$("synonyms").value="";
+$("sentence").value="";
+if($("learningState")) $("learningState").value="auto";
+if($("manualMemoryLevel")) $("manualMemoryLevel").value="";
+if($("manualStabilityScore")) $("manualStabilityScore").value="";
+$("duplicateNotice").className="";
+$("duplicateNotice").innerHTML="";
+}
+
+function editWord(i){
+const item=vocabulary[i];
+if(!item)return;
+$("editIndex").value=i;
+$("formTitle").textContent="Editar vocabulário";
+$("ptWord").value=item.pt||"";
+$("deWord").value=item.de||"";
+$("synonyms").value=(item.synonyms||[]).join(", ");
+$("sentence").value=item.sentence||"";
+if($("learningState")) $("learningState").value=item.learningState || (item.mastered ? "mastered" : "auto");
+if($("manualMemoryLevel")) $("manualMemoryLevel").value=Math.round(item.memoryLevel||0);
+if($("manualStabilityScore")) $("manualStabilityScore").value=Math.round(item.stabilityScore||0);
+switchPage("add");
+renderDuplicateWarning();
+setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);
+}
+
+function deleteWord(i){if(!confirm("Apagar esta palavra?"))return;vocabulary.splice(i,1);saveVocabulary();renderWordList();startPractice()}
+function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;correctCount=0;wrongCount=0;updateSessionProgress();saveVocabulary();renderWordList();startPractice()}
+
+
+
+function takeSessionSnapshot(){
+  sessionStartedAt = Date.now();
+  window.sessionCardCounter=0;
+  sessionMasteredRemembered=0;
+  sessionMasteredForgotten=0;
+  sessionRecoveredConfirmations=0;
+  sessionFailedConfirmations=0;
+  sessionInitialSnapshot = {};
+  vocabulary.forEach((w,i)=>{
+    sessionInitialSnapshot[i] = {
+      memoryLevel: w.memoryLevel || 0,
+        memoryManualAdjusted: !!w.memoryManualAdjusted,
+      mastered: !!w.mastered,
+learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
+      studyState: w.studyState || "new",
+      failCount: w.failCount || 0,
+      successCount: w.successCount || 0,
+      difficultyBoost: !!w.difficultyBoost
+    };
+  });
+}
+
+function sessionSummaryHtml(){
+  const durationMin = Math.max(1, Math.round((Date.now() - sessionStartedAt)/60000));
+  let improved = 0, newlyMastered = 0, stillCritical = 0, difficult = 0, errors = 0, learnedActive = 0, dueTomorrow = 0;
+
+  vocabulary.forEach((w,i)=>{
+    const before = sessionInitialSnapshot[i] || {};
+    const beforeMem = before.memoryLevel || 0;
+    const nowMem = w.memoryLevel || 0;
+
+    if(nowMem > beforeMem) improved++;
+    if(!before.mastered && w.mastered) newlyMastered++;
+    if(isCritical(w)) stillCritical++;
+    if(w.difficultyBoost && !w.mastered) difficult++;
+    if((w.failCount||0) > (before.failCount||0)) errors++;
+    if((w.studyState||"new") === "learning" && !w.mastered) learnedActive++;
+    if(w.nextReviewAt && w.nextReviewAt <= Date.now()+24*60*60*1000) dueTomorrow++;
+  });
+
+  const avgMemory = vocabulary.length ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/vocabulary.length) : 0;
+const dueNow = vocabulary.filter(w=>isDueForReview(w) && isMasteredForScheduling(w)).length;
+const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
+
+  return `
+    <div class="answer-title">Sessão concluída 🎉</div>
+    <div class="grid2" style="font-size:16px;text-align:left;margin-top:14px">
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Duração:</strong><br>${durationMin} min</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Cartões apresentados:</strong><br>${correctCount + wrongCount}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Consolidadas:</strong><br>${newlyMastered}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Palavras recuperadas:</strong><br>${improved}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Palavras difíceis:</strong><br>${difficult}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Zona crítica ativa:</strong><br>${stillCritical}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas recordadas:</strong><br>${sessionMasteredRemembered}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas esquecidas:</strong><br>${sessionMasteredForgotten}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Recuperadas:</strong><br>${sessionRecoveredConfirmations}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Revisões 24h:</strong><br>${dueTomorrow}</div><div class="box" style="box-shadow:none;background:#f8fafc"><strong>Scheduler:</strong><br>${$("adaptiveScheduler")?.checked?"Adaptativo":"Clássico"}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Confirmações falhadas:</strong><br>${sessionFailedConfirmations}</div>
+    </div>
+    <div class="small" style="margin-top:12px">
+      Memória média atual: <strong>${avgMemory}%</strong><br>
+      Acertos nesta sessão: <strong>${correctCount}</strong> · Erros/skip: <strong>${wrongCount}</strong>
+    </div>
+  `;
+}
+
+function showSessionComplete(){
+  releaseWakeLock();
+  currentCard=null;
+  const card=$("card");
+  card.className="card revealed";
+  card.innerHTML=sessionSummaryHtml();
+  $("answerArea").classList.add("hidden");
+  if($("voiceResult"))$("voiceResult").innerHTML="";
+  renderStatsPage();
+}
+
+
+function getMaxCardsPerSession(){
+ const el=$("maxCardsPerSession");
+ return el ? Number(el.value) : 40;
+}
+
+// Mantido apenas por compatibilidade interna. A V10.6.11 removeu o mínimo como critério de fim.
+function getMinCardsPerSession(){
+ return 0;
+}
+
+function getMinReviewsPerSession(){
+ const el=$("minReviewsPerSession");
+ return el ? Number(el.value) : 5;
+}
+
+function getRequiredReviewsForSession(){
+ return Math.min(getMinReviewsPerSession(), sessionPlannedReviews||0);
+}
+
+function getSessionExcludedThreshold(){
+ const el=$("sessionExcludedThreshold");
+ return el ? Number(el.value) : 50;
+}
+
+function getSessionWordDoneMemory(){
+ // V10.6.14: exclusão/domínio da ronda segue o critério pedagógico principal.
+ return masterThreshold();
+}
+
+function getSessionWordDoneStreak(){
+ // V10.6.15: fixed reference used only for display. Streak no longer defines exclusion.
+ return 5;
+}
+
+function getTargetDistinctWords(){
+ const el=$("targetDistinctWords");
+ return el ? Number(el.value) : 12;
+}
+
+function sessionAnsweredCount(){
+ return (correctCount||0) + (wrongCount||0);
+}
+
+function sessionWordKey(word){
+ const idx=vocabulary.indexOf(word);
+ return idx>=0 ? String(idx) : ((word?.pt||"")+"|"+(word?.de||""));
+}
+
+function markSessionWord(word){
+ if(!word) return;
+ sessionWords.add(sessionWordKey(word));
+}
+
+function markSessionWordDone(word){
+ if(!word) return;
+ sessionDoneWords.add(sessionWordKey(word));
+}
+
+function sessionExcludedPercent(){
+ const total=sessionPlannedWords.size || sessionWords.size || 0;
+ if(!total) return 0;
+ return Math.round((sessionDoneWords.size/total)*100);
+}
+
+function estimatedRemainingCards(){
+ const max=getMaxCardsPerSession();
+ const answered=sessionAnsweredCount();
+ const queueRemaining=practiceQueue ? practiceQueue.length : 0;
+ return Math.min(Math.max(0,max-answered), queueRemaining);
+}
+
+function hasCriticalActive(){ return practiceQueue.some(w=>isCritical(w)); }
+function hasConfirmationActive(){ return practiceQueue.some(w=>isConfirmationState(w)); }
+
+function isViableCard(word){
+ if(!word) return false;
+ if(isCritical(word)) return true;
+ if(isConfirmationState(word)) return true;
+ if(isLearningCandidate(word)) return true;
+ if(isDueForReview(word) && isMasteredForScheduling(word)) return true;
+ return isSessionDue(word);
+}
+
+function hasViableCard(){ return practiceQueue.some(w=>isViableCard(w)); }
+
+function sessionEndBlocker(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return "limite absoluto atingido";
+ if(hasCriticalActive()) return "crítica ativa";
+ if(hasConfirmationActive()) return "confirmação ativa";
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return `faltam revisões ${sessionReviewCount}/${requiredReviews}`;
+ if(sessionExcludedPercent() < getSessionExcludedThreshold()) return `excluídas ${sessionExcludedPercent()}%/${getSessionExcludedThreshold()}%`;
+ return "pronta para terminar";
+}
+
+function canEndSessionAdaptive(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return true;
+ if(hasCriticalActive()) return false;
+ if(hasConfirmationActive()) return false;
+
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return false;
+
+ const enoughExcluded=sessionExcludedPercent() >= getSessionExcludedThreshold();
+
+ // When target exclusion is reached and mandatory blockers are clear, end the round.
+ if(enoughExcluded) return true;
+
+ // If no useful cards are available, end too.
+ if(!hasViableCard()) return true;
+
+ return false;
+}
+
+function canAddMoreSessionCards(){
+ const max=getMaxCardsPerSession();
+ const answered=sessionAnsweredCount();
+ const queued=practiceQueue ? practiceQueue.length : 0;
+ return (answered + queued) < max;
+}
+
+function countEligibleCards(){
+ return practiceQueue ? practiceQueue.filter(w=>isViableCard(w) && isSessionDue(w)).length : 0;
+}
+
+
+function sessionStatusLabel(){
+ if(sessionAnsweredCount()>=getMaxCardsPerSession()) return "limite absoluto atingido";
+ if(hasCriticalActive()) return "crítica ativa";
+ if(hasConfirmationActive()) return "confirmação ativa";
+ const requiredReviews=getRequiredReviewsForSession();
+ if(sessionReviewCount < requiredReviews) return `aguarda revisões ${sessionReviewCount}/${requiredReviews}`;
+ if(sessionExcludedPercent() >= getSessionExcludedThreshold()) return "pronta para terminar";
+ if(!hasViableCard()) return "sem cartas elegíveis";
+ return `a excluir palavras (${sessionExcludedPercent()}%/${getSessionExcludedThreshold()}%)`;
+}
+
+
+function roundDetailsIsOpen(){
+ const current=$("roundDetails");
+ if(current) return !!current.open;
+ return localStorage.getItem("roundDetailsOpen")==="1";
+}
+
+function rememberRoundDetailsState(){
+ const d=$("roundDetails");
+ if(!d) return;
+ d.addEventListener("toggle",()=>localStorage.setItem("roundDetailsOpen", d.open ? "1" : "0"));
+}
+
+function updateSessionProgress(){
+ const el=$("sessionProgressInfo");
+ if(!el) return;
+
+ const total=sessionPlannedWords.size || sessionWords.size || 0;
+ const excluded=sessionDoneWords.size || 0;
+ const queue=practiceQueue ? practiceQueue.length : 0;
+ const eligible=countEligibleCards ? countEligibleCards() : queue;
+ const requiredReviews=getRequiredReviewsForSession ? getRequiredReviewsForSession() : 0;
+ const reviewDoneDisplay=sessionReviewCount>requiredReviews?`${requiredReviews}+`:sessionReviewCount;
+
+ el.innerHTML=`${sessionAnsweredCount()} respondidas · ${excluded}/${total} excluídas`;
+
+ if($("voiceDebug") && $("voiceDebug").checked){
+   const detailsOpen=roundDetailsIsOpen();
+   let blocker="";
+   if(hasCriticalActive && hasCriticalActive()) blocker="crítica ativa";
+   else if(hasConfirmationActive && hasConfirmationActive()) blocker="confirmação ativa";
+   else if(sessionReviewCount < requiredReviews) blocker=`faltam revisões ${sessionReviewCount}/${requiredReviews}`;
+   else blocker="sem bloqueio relevante";
+
+   el.innerHTML += `<details id="roundDetails" class="compact-details"${detailsOpen ? " open" : ""}>
+     <summary>Estado da ronda</summary>
+     Modo: ${modeLabel()}<br>
+     Respondidas: ${sessionAnsweredCount()}<br>
+     Excluídas: ${excluded}/${total}<br>
+     Cartas em espera: ${queue}<br>
+     Disponíveis agora: ${eligible}<br>
+     Revisões feitas: ${reviewDoneDisplay}/${requiredReviews}<br>
+     Revisões vencidas: ${sessionDueReviewsTotal||0}<br>
+     Revisões incluídas: ${sessionPlannedReviews||0}<br>
+     Bloqueio: ${blocker}
+   </details>`;
+   rememberRoundDetailsState();
+ }
+}
+
+function shouldRemoveWordFromCurrentRound(word,lastSuccess){
+ if(!word || !lastSuccess) return false;
+
+ // V10.6.14:
+ // Excluída da ronda = atingiu o critério pedagógico principal de domínio.
+ // A streak da ronda NÃO exclui; serve apenas para espaçamento.
+ return isManualMastered(word) || isAutoMasteryReady(word);
+}
+
+function removeAllFromPracticeQueue(word){
+ if(!word || !practiceQueue) return;
+ practiceQueue=practiceQueue.filter(w=>w!==word);
+}
+
+function randomInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+
+function cfgNumber(id,fallback){
+ const el=$(id);
+ return el ? Number(el.value) : fallback;
+}
+function spacingRange(kind){
+ if(kind==="low") return [cfgNumber("spacingLowMin",2), cfgNumber("spacingLowMax",3)];
+ if(kind==="mid") return [cfgNumber("spacingMidMin",4), cfgNumber("spacingMidMax",7)];
+ if(kind==="high") return [cfgNumber("spacingHighMin",8), cfgNumber("spacingHighMax",12)];
+ if(kind==="veryHigh") return [cfgNumber("spacingVeryHighMin",13), cfgNumber("spacingVeryHighMax",20)];
+ return [2,3];
+}
+function randomSpacing(kind){
+ const r=spacingRange(kind);
+ return randomInt(Math.min(r[0],r[1]), Math.max(r[0],r[1]));
+}
+
+function applySpacingMode(distance){
+ const mode=$("repeatSpacingMode") ? $("repeatSpacingMode").value : "smart";
+ if(mode==="compact") return Math.max(1,Math.round(distance*0.75));
+ if(mode==="wide") return Math.max(1,Math.round(distance*1.35));
+ return distance;
+}
+
+
+function getCardType(w){
+ const de=(w?.de||"").trim();
+ if(!de) return "normal";
+
+ // Manual override para futuras versões/importações.
+ if(w.cardType==="sentence" || w.type==="sentence") return "sentence";
+ if(w.cardType==="normal" || w.type==="normal" || w.type==="word" || w.type==="expression") return "normal";
+
+ const lower=de.toLowerCase();
+
+ // Frase clara: pontuação final no campo alemão principal.
+ if(/[.!?]$/.test(de)) return "sentence";
+
+ // Frase provável: sujeito/início de frase + verbo conjugado.
+ const starters=/^(ich|du|er|sie|es|wir|ihr|das|dies|dieser|diese|dieses|man)\b/i;
+ const conjugated=/\b(bin|bist|ist|sind|seid|war|waren|wäre|habe|hast|hat|haben|habt|hatte|hatten|werde|wirst|wird|werden|kann|kannst|können|könnt|muss|musst|müssen|müsst|soll|sollst|sollen|sollt|will|willst|wollen|wollt|möchte|möchtest|möchten|mag|magst|glaube|glaubst|glaubt|denke|denkst|denkt|gehe|gehst|geht|komme|kommst|kommt|fahre|fährst|fährt|mache|machst|macht|brauche|brauchst|braucht|freue|freust|freut|finde|findest|findet|sehe|siehst|sieht)\b/i;
+
+ if(starters.test(lower) && conjugated.test(lower)) return "sentence";
+
+ // Padrões completos comuns.
+ if(/\b(es gibt|das ist|ich bin|ich habe|ich möchte|ich muss|ich kann|wir sind|wir haben|er ist|sie ist)\b/i.test(lower)) return "sentence";
+
+ // Expressões como "auf jeden Fall", "sich freuen auf" e "überzeugt sein" ficam normais.
+ return "normal";
+}
+
+function isPhraseCard(w){
+ return getCardType(w)==="sentence";
+}
+
+function cardTypeLabel(w){
+ return getCardType(w)==="sentence" ? "Frase" : "Palavra";
+}
+
+
+
+function getMinPhrasesPerSession(){
+ const el=$("minPhrasesPerSession");
+ return el ? Number(el.value) : 1;
+}
+
+function shouldShowInspector(){
+ const el=$("showWordInspector");
+ return !!(el && el.checked);
+}
+
+function calculatedWordState(w){
+ if(!w) return "—";
+ if(isSuspendedCard(w)) return "Suspensa";
+ if(isCritical(w)) return "Zona crítica";
+ if(isConfirmationState(w)) return "Verificação de retenção";
+ if(isFragile(w)) return "Frágil";
+ if(isResistant(w)) return "Resistente";
+ if(isMasteredForScheduling(w) && isDueForReview(w)) return "Revisão vencida";
+ if(isManualMastered(w)) return "Dominada manual";
+ if(isAutoMasteryReady(w)) return "Dominada";
+ if((w.memoryLevel||0) >= Math.max(0, masterThreshold()-10)) return "Quase dominada";
+ if((w.studyState||"new")==="new" && (w.seenCount||0)===0) return "Nova";
+ return "Aprendizagem";
+}
+
+function reviewDueLabel(w){
+ if(!w || !w.nextReviewAt) return "sem data";
+ const diff=Date.now()-w.nextReviewAt;
+ const days=Math.floor(Math.abs(diff)/86400000);
+ if(diff>=0) return days===0 ? "vencida hoje" : `vencida há ${days} dia(s)`;
+ return days===0 ? "hoje" : `daqui a ${days} dia(s)`;
+}
+
+function cardDistanceInfo(w){
+ const now=window.sessionCardCounter||0;
+ const lastSeen=w && w.lastSeenCardIndex ? now-w.lastSeenCardIndex : null;
+ const due=w && w.sessionDueAt ? w.sessionDueAt-now : null;
+ return {
+   lastSeen:lastSeen===null ? "—" : `há ${Math.max(0,lastSeen)} carta(s)`,
+   nextDue:due===null ? "—" : `~${Math.max(0,due)} carta(s)`
+ };
+}
+
+function escapeHTML(s){
+ return String(s||"").replace(/[&<>"']/g, m => ({
+   "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ }[m]));
+}
+
+function showModal(title, body){
+ let modal=$("appModal");
+ if(!modal){
+   modal=document.createElement("div");
+   modal.id="appModal";
+   modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+   modal.innerHTML=`<div style="background:white;color:#111;max-width:520px;width:100%;max-height:85vh;overflow:auto;border-radius:18px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
+     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px">
+       <h2 id="appModalTitle" style="margin:0;font-size:18px"></h2>
+       <button id="appModalClose" type="button">Fechar</button>
+     </div>
+     <div id="appModalBody"></div>
+   </div>`;
+   document.body.appendChild(modal);
+   $("appModalClose").onclick=()=>modal.style.display="none";
+   modal.onclick=(e)=>{ if(e.target===modal) modal.style.display="none"; };
+ }
+ $("appModalTitle").textContent=title;
+ $("appModalBody").innerHTML=body;
+ modal.style.display="flex";
+}
+
+function openWordInspector(index){
+ const w=vocabulary[index];
+ if(!w) return;
+ const dist=cardDistanceInfo(w);
+ const threshold=masterThreshold();
+ const missing=Math.max(0, threshold-(w.memoryLevel||0));
+ const due=isDueForReview(w);
+ const roundStreak=sessionRoundStreak[sessionWordKey(w)]||0;
+
+ const technical=`<details style="margin-top:10px">
+<summary><b>Detalhes técnicos</b></summary>
+<div class="small" style="margin-top:8px;line-height:1.55">
+Modo treino atual: ${modeLabel()}<br>
+Categoria do próximo spacing: ${w.lastSpacingCategory||"—"}<br>
+Distância planeada: ${w.lastSpacingDistance||"—"}<br>
+Motivo do próximo spacing: ${w.lastSpacingReason||"—"}<br>
+Streak usada no spacing: ${w.lastSpacingHistoricalStreak ?? w.correctStreak ?? 0}<br>
+Streak ronda no último cálculo: ${w.lastSpacingRoundStreak ?? roundStreak}<br>
+Último ganho como revisão vencida: ${w.lastMetricDueApplied ? "sim" : "não"}<br>
+Último tipo de métrica: ${w.lastMetricType || "—"}<br>
+sessionDueAt: ${w.sessionDueAt||"—"}<br>
+lastSeenCardIndex: ${w.lastSeenCardIndex||"—"}
+</div>
+</details>`;
+
+ const body=`<div style="line-height:1.55">
+<b>${escapeHTML(w.de||"")}</b><br>
+<span class="small">${escapeHTML(w.pt||"")}</span>
+<hr>
+<b>Estado:</b> ${calculatedWordState(w)}<br>
+<b>Tipo:</b> ${cardTypeLabel(w)}<br>
+<b>Memory:</b> ${Math.round(w.memoryLevel||0)}%<br>
+<b>Domínio Memory:</b> ${threshold}%${missing>0 ? ` · faltam ${Math.round(missing)}%` : ""}<br>
+<b>Stability:</b> ${Math.round(w.stabilityScore||0)}% · mínimo ${stabilityMasterThreshold()}%<br>
+${isConfirmationState(w) ? `<b>Verificação:</b> ${(w.retentionCheckSuccesses||0)}/2 sucessos<br>` : ""}
+<b>XP:</b> ${Math.round(w.xp||0)}<br>
+<b>Melhor espaçamento superado:</b> ${displayBestSpacing(w)} · barreira normal ${normalSpacingThreshold()}<br><b>Tag:</b> ${visualTagLabel(w)}<br><b>Barreira:</b> ${barrierSummary(w)}<br>
+<b>Espaçamento testado nesta resposta:</b> ${Math.round(w.presentedSpacing||0)} · fonte: ${sourceLabel(w.presentedSpacingSource)}<br>
+<b>Próximo espaçamento planeado:</b> ${Math.round(w.lastTestedSpacing||0)} · fonte: ${sourceLabel(w.lastTestedSpacingSource)}<br>
+<b>Último espaçamento falhado:</b> ${Math.round(w.lastFailedSpacing||0)}<br>
+<b>Fragility debt:</b> ${clampFragilityDebt(w.fragilityDebt||0).toFixed(2)} / 2<br><b>Classificação:</b> ${classificationLabel(w)}<br><b>Diagnóstico:</b> ${difficultyDiagnosis(w)}<br>\n${w.memoryManualAdjusted ? "<b>Memory ajustada manualmente:</b> sim<br>" : ""}${w.stabilityManualAdjusted ? "<b>Stability ajustada manualmente:</b> sim<br>" : ""}
+<b>Streak histórica:</b> ${w.correctStreak||0}<br>
+<b>Streak ronda:</b> ${roundStreak}<br>
+<hr>
+<b>Última aparição:</b> ${dist.lastSeen}<br>
+<b>Próxima aparição prevista:</b> ${dist.nextDue}<br>
+<hr>
+<b>Próxima revisão:</b> ${w.nextReviewAt ? new Date(w.nextReviewAt).toLocaleDateString() : "—"}<br>
+<b>Estado da revisão:</b> ${reviewDueLabel(w)}${due ? " ✅" : ""}<br>
+${isCritical(w) ? "<b>Zona crítica:</b> ativa<br>" : ""}
+${isConfirmationState(w) ? "<b>Confirmação:</b> ativa<br>" : ""}
+${technical}
+</div>`;
+
+ showModal("Inspector da Palavra", body);
+}
+
+
+function retentionChallengeCards(active, limit=3){
+ return active
+   .filter(w => (w.memoryLevel||0) >= 75 && (w.stabilityScore||0) >= 50 && (w.learningState||"auto") !== "suspended")
+   .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0))
+   .slice(0,limit);
+}
+
+function currentTrainingMode(){
+ const el=$("trainingMode");
+ return el ? el.value : "normal";
+}
+
+function modePrefix(mode=currentTrainingMode()){
+ return {
+   normal:"modeNormal",
+   intense:"modeIntense",
+   hard:"modeHard",
+   phrases:"modePhrases",
+   reviews:"modeReviews"
+ }[mode] || "modeNormal";
+}
+
+function modeNumber(suffix,fallback,mode=currentTrainingMode()){
+ const el=$(modePrefix(mode)+suffix);
+ return el ? Number(el.value) : fallback;
+}
+
+function modeCards(mode=currentTrainingMode()){
+ return modeNumber("Cards", getTargetDistinctWords(), mode);
+}
+
+function modeMemoryMult(mode=currentTrainingMode()){
+ return modeNumber("MemoryMult",1,mode);
+}
+
+function modeStabilityMult(mode=currentTrainingMode()){
+ return modeNumber("StabilityMult",1,mode);
+}
+
+function modeXpMult(mode=currentTrainingMode()){
+ return modeNumber("XpMult",1,mode);
+}
+
+function modeSpacingMult(mode=currentTrainingMode()){
+ return modeNumber("SpacingMult",1,mode);
+}
+
+function modeLabel(mode=currentTrainingMode()){
+ return {
+   normal:"Normal",
+   intense:"Intenso",
+   hard:"Difíceis",
+   phrases:"Frases",
+   reviews:"Revisões"
+ }[mode] || "Normal";
+}
+
+function updateTrainingModeInfo(){
+ const el=$("trainingModeInfo");
+ if(!el) return;
+ const mode=currentTrainingMode();
+ const texts={
+   normal:"Treino equilibrado com novas, aprendizagem, frases mínimas e revisões.",
+   intense:"Poucas cartas, 50/50 novas e aprendizagem, repetições compactas.",
+   hard:"Foco em críticas, difíceis e cartas com erros recentes.",
+   phrases:"Treino só de frases, priorizando não dominadas.",
+   reviews:"Revisões vencidas e próximas para validar retenção."
+ };
+ el.textContent=texts[mode]||texts.normal;
+}
+
+function isHardCandidate(w){
+ if(!w || isSuspendedCard(w) || isMasteredForScheduling(w)) return false;
+ const errors=(w.errorStats?.memory||0)+(w.errorStats?.grammar||0)+(w.errorStats?.article||0);
+ return !!w.difficultyBoost || isCritical(w) || errors>=1 || (w.wrongStreak||0)>0 || (w.memoryLevel||0)<30 || (w.stabilityScore||0)<30;
+}
+
+function upcomingReviewCandidates(pool,limit){
+ return pool
+  .filter(w=>isReviewCandidateOrMissingDate(w) && w.nextReviewAt && !isDueForReview(w))
+  .sort((a,b)=>(a.nextReviewAt||Infinity)-(b.nextReviewAt||Infinity))
+  .slice(0,limit);
+}
+
+function takeBalanced(list,limit){
+ return [...new Set(list)].slice(0,Math.max(0,limit));
+}
+
+
+function buildPracticeQueue(){
+ const mode=currentTrainingMode();
+ updateTrainingModeInfo();
+
+ const maxNew=Number($("maxNewWords")?$("maxNewWords").value:5);
+ const maxCards=getMaxCardsPerSession();
+ const targetUnique=modeCards(mode);
+ const active=activeVocabulary();
+ const reviewPool=reviewVocabulary();
+
+ const confirmation=active.filter(w=>isConfirmationState(w));
+ const critical=active.filter(w=>isCritical(w) && !isConfirmationState(w));
+
+ const dueMasteredAll = reviewPool
+  .filter(w => isReviewCandidateOrMissingDate(w) && (!w.nextReviewAt || isDueForReview(w)))
+  .sort((a,b)=>(a.nextReviewAt||0)-(b.nextReviewAt||0));
+
+ sessionDueReviewsTotal = dueMasteredAll.length;
+
+ let selected=[];
+
+ if(mode==="reviews"){
+   const dueLimit=Math.round(targetUnique*(scoreValue("modeReviewsDuePct",100)/100));
+   const due=dueMasteredAll.slice(0,dueLimit || targetUnique);
+   const upcoming=upcomingReviewCandidates(reviewPool, targetUnique-due.length);
+   selected=takeBalanced([...due,...upcoming], targetUnique);
+   sessionPlannedReviews=selected.filter(w=>dueMasteredAll.includes(w)).length;
+ }else if(mode==="phrases"){
+   const activePhrases=active
+     .filter(w=>isPhraseCard(w))
+     .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+   const masteredPhrases=reviewPool
+     .filter(w=>isPhraseCard(w) && isMasteredForScheduling(w))
+     .sort((a,b)=>(isDueForReview(a)?0:1)-(isDueForReview(b)?0:1) || (a.nextReviewAt||Infinity)-(b.nextReviewAt||Infinity));
+   const activeTarget=Math.round(targetUnique*(scoreValue("modePhrasesActivePct",80)/100));
+   const a=activePhrases.slice(0,activeTarget);
+   const m=masteredPhrases.slice(0,Math.max(0,targetUnique-a.length));
+   selected=takeBalanced([...a,...m,...activePhrases.slice(activeTarget)], targetUnique);
+   sessionPlannedReviews=selected.filter(w=>dueMasteredAll.includes(w)).length;
+ }else if(mode==="hard"){
+   const hard=active
+     .filter(w=>isHardCandidate(w) && !isConfirmationState(w))
+     .sort((a,b)=>{
+       if(isCritical(a)!==isCritical(b)) return isCritical(a)?-1:1;
+       if((b.wrongStreak||0)!==(a.wrongStreak||0)) return (b.wrongStreak||0)-(a.wrongStreak||0);
+       return (a.memoryLevel||0)-(b.memoryLevel||0);
+     });
+   selected=takeBalanced([...confirmation,...critical,...hard], targetUnique);
+   sessionPlannedReviews=0;
+ }else if(mode==="intense"){
+   const newWords=active.filter(w=>(w.studyState||"new")==="new");
+   const learning=active
+    .filter(w=>!isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
+    .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+   const newTarget=Math.round(targetUnique*(scoreValue("modeIntenseNewPct",50)/100));
+   const n=newWords.slice(0,Math.min(maxNew,newTarget));
+   const l=learning.slice(0,Math.max(0,targetUnique-n.length));
+   selected=takeBalanced([...confirmation,...critical,...n,...l,...newWords.slice(n.length)], targetUnique);
+   sessionPlannedReviews=0;
+ }else{
+   const carryOver=active
+    .filter(w=>!w.mastered && !isConfirmationState(w) && !isCritical(w) && (w.studyState||"new")!=="new")
+    .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+   const newWords=active.filter(w=>(w.studyState||"new")==="new");
+
+   let core=[];
+   core.push(...confirmation);
+   core.push(...critical);
+   core.push(...carryOver);
+   core=[...new Set(core)];
+
+   const freeSlots=Math.max(0,targetUnique-core.length);
+   core.push(...newWords.slice(0,Math.min(maxNew,freeSlots)));
+   core=[...new Set(core)].slice(0,targetUnique);
+
+   function ensureMinimumPhrases(coreList){
+     const minPhrases=getMinPhrasesPerSession();
+     if(minPhrases<=0) return coreList;
+
+     let result=[...coreList];
+     let phraseCount=result.filter(isPhraseCard).length;
+     if(phraseCount>=minPhrases) return result;
+
+     const protectedSet=new Set([...confirmation,...critical]);
+     const candidates=active
+       .filter(w=>isPhraseCard(w) && !result.includes(w) && !protectedSet.has(w))
+       .sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0));
+
+     for(const phrase of candidates){
+       if(phraseCount>=minPhrases) break;
+       if(result.length < targetUnique){
+         result.push(phrase);
+         phraseCount++;
+         continue;
+       }
+       let replaceIdx=-1;
+       let replaceScore=-Infinity;
+       result.forEach((w,i)=>{
+         if(protectedSet.has(w)) return;
+         const score=(w.memoryLevel||0) + (isPhraseCard(w)?-1000:0);
+         if(score>replaceScore){ replaceScore=score; replaceIdx=i; }
+       });
+       if(replaceIdx>=0){
+         result[replaceIdx]=phrase;
+         phraseCount++;
+       }
+     }
+     return [...new Set(result)].slice(0,targetUnique);
+   }
+
+   core=ensureMinimumPhrases(core);
+
+   selected=[...core];
+   const reviewLimit=getMinReviewsPerSession();
+   const dueMastered=dueMasteredAll.slice(0,reviewLimit);
+   dueMastered.forEach(w=>{ if(!selected.includes(w)) selected.push(w); });
+   sessionPlannedReviews=dueMastered.length;
+
+   retentionChallengeCards(active,Math.max(1,Math.round(maxCards*0.05))).forEach(w=>{
+     if(!selected.includes(w)) selected.push(w);
+   });
+
+   selected = selected.slice(0, Math.max(1, maxCards + reviewLimit));
+ }
+
+ if(mode!=="normal"){
+   selected=[...new Set(selected)].slice(0,Math.max(1,targetUnique));
+ }
+
+ selected.forEach(w=>{
+  markSessionWord(w);
+  sessionPlannedWords.add(sessionWordKey(w));
+ });
+
+ selected.forEach(w=>{
+  if(isCritical(w)) setSessionDue(w,0);
+  else if(isConfirmationState(w)) setSessionDue(w,1);
+  else setSessionDue(w,0);
+ });
+
+ return selected;
+}
+
+window.__wakeLock = window.__wakeLock || null;
+let wakeLockKeepAliveTimer=null;
+
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator && !window.__wakeLock){
+      window.__wakeLock = await navigator.wakeLock.request('screen');
+      window.__wakeLock.addEventListener?.('release',()=>{window.__wakeLock=null;});
+    }
+  }catch(e){}
+
+  // Fallback/keepalive: iOS Safari/PWA pode ignorar Screen Wake Lock.
+  // Não garante 100%, mas reduz standby durante treino com microfone.
+  try{
+    clearInterval(wakeLockKeepAliveTimer);
+    wakeLockKeepAliveTimer=setInterval(()=>{
+      if(micMasterOn || currentCard){
+        document.body.dataset.keepAwake=String(Date.now());
+      }
+    }, 20000);
+  }catch(e){}
+}
+
+async function releaseWakeLock(){
+  try{
+    clearInterval(wakeLockKeepAliveTimer);
+    wakeLockKeepAliveTimer=null;
+    if(window.__wakeLock){
+      await window.__wakeLock.release();
+      window.__wakeLock=null;
+    }
+  }catch(e){}
+}
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible" && micMasterOn && isAutoMicMode()){
+    requestWakeLock();
+  }
+});
+
+
+function resetRoundRuntimeState(){
+ stopAllMicActivity();
+ currentCard=null;
+ practiceQueue=[];
+ correctCount=0;
+ wrongCount=0;
+ sessionWords=new Set();
+ sessionPlannedWords=new Set();
+ sessionDoneWords=new Set();
+ sessionReviewCount=0;
+ sessionPlannedReviews=0;
+ sessionRoundStreak={};
+ sessionLastCorrect={};
+ window.sessionCardCounter=0;
+ vocabulary.forEach(w=>{
+   w.sessionDueAt=0;
+   w.sessionAppearances=0;
+ });
+}
+
+function startPractice(){
+requestWakeLock();
+takeSessionSnapshot();
+resetRoundRuntimeState();
+practiceQueue=buildPracticeQueue();
+updateSessionProgress();
+nextCard();
+}
+
+function nextCard(){
+if(sessionAnsweredCount()>=getMaxCardsPerSession() || canEndSessionAdaptive()){
+  showSessionComplete();
+  updateSessionProgress();
+  return;
+}
+revealed=false;
+$("answerArea").classList.add("hidden");
+if($("voiceResult"))$("voiceResult").innerHTML="";
+const card=$("card");
+card.className="card";
+window.sessionCardCounter=(window.sessionCardCounter||0)+1;
+
+if(practiceQueue.length===0){
+ showSessionComplete();
+ return;
+}
+
+let due=practiceQueue.map((c,i)=>({c,i})).filter(x=>isViableCard(x.c) && isSessionDue(x.c));
+
+if(!due.length){
+ if(sessionAnsweredCount()>=getMinCardsPerSession()){
+   showSessionComplete();
+   updateSessionProgress();
+   return;
+ }
+ due=practiceQueue.map((c,i)=>({c,i})).sort((a,b)=>(a.c.sessionDueAt||0)-(b.c.sessionDueAt||0)).slice(0,1);
+}
+
+due.sort((a,b)=>{
+ const ac=a.c, bc=b.c;
+ if(isConfirmationState(ac) && !isConfirmationState(bc)) return -1;
+ if(!isConfirmationState(ac) && isConfirmationState(bc)) return 1;
+ if(isCritical(ac) && !isCritical(bc)) return -1;
+ if(!isCritical(ac) && isCritical(bc)) return 1;
+ if(isDueForReview(ac) && !isDueForReview(bc)) return -1;
+ if(!isDueForReview(ac) && isDueForReview(bc)) return 1;
+ return (ac.memoryLevel||0)-(bc.memoryLevel||0);
+});
+
+const pick=due[0];
+currentCard=pick.c;
+markSessionWord(currentCard);
+practiceQueue.splice(pick.i,1);
+currentCard.sessionAppearances=(currentCard.sessionAppearances||0)+1;
+currentCard.lastSeenCardIndex=window.sessionCardCounter;
+currentCard.wasDueReviewAtPresentation = !!(currentCard.nextReviewAt && currentCard.nextReviewAt <= nowTs() && isMasteredForScheduling(currentCard));
+
+card.innerHTML=currentCard.pt;
+updateStats();
+renderProgress();
+speakPortuguese(currentCard.pt);
+forceMicStartSoonNoPortuguese();
+
+if(micMasterOn && isAutoMicMode()){
+ scheduleAutoMic();
+}
+}
+
+function revealCard(){
+if(!currentCard)return;
+const card=$("card");
+if(revealed){
+  revealed=false;
+  $("answerArea").classList.add("hidden");
+  card.className="card";
+  card.innerHTML=currentCard.pt;
+  return;
+}
+revealed=true;
+card.className="card revealed";
+const ans=getAllAnswers(currentCard);
+card.innerHTML=`<div class="answer-title">${formatGerman(currentCard.de)}</div><div><strong>Respostas aceites:</strong><br>${ans.join(" · ")}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}<div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}% · ${memoryLabel(currentCard)}</div>`;
+renderSynonymButtons(ans);
+$("answerArea").classList.remove("hidden");
+}
+function renderSynonymButtons(ans){$("synonymButtons").innerHTML="";ans.forEach(a=>{const b=document.createElement("button");b.className="success";b.textContent="Acertei: "+a;b.onclick=()=>markCorrect(a);$("synonymButtons").appendChild(b)})}
+
+
+function scoreValue(id,fallback){
+ const el=$(id);
+ return el?Number(el.value):fallback;
+}
+
+function masterThreshold(){
+ return scoreValue("masterThreshold",85);
+}
+function stabilityMasterThreshold(){
+ return scoreValue("stabilityMasterThreshold",50);
+}
+function isAutoMasteryReady(word){
+ return (word.memoryLevel||0) >= masterThreshold() && (word.stabilityScore||0) >= stabilityMasterThreshold();
+}
+function isManualMastered(word){
+ return !!word.manualMastered;
+}
+
+
+function isSuspendedCard(word){
+ return (word?.learningState||"auto")==="suspended" || word?.studyState==="suspended";
+}
+
+function isLearningCandidate(word){
+ return !!word && !isSuspendedCard(word) && !isMasteredForScheduling(word);
+}
+
+function isReviewCandidateOrMissingDate(word){
+ return !!word && !isSuspendedCard(word) && isMasteredForScheduling(word);
+}
+
+function isMasteredForScheduling(word){
+ if(!word || isSuspendedCard(word)) return false;
+ if(isManualMastered(word)) return true;
+ return isAutoMasteryReady(word);
+}
+function minExposuresToMaster(){
+ return scoreValue("minExposuresToMaster",5);
+}
+function minStreakToMaster(){
+ return scoreValue("minStreakToMaster",3);
+}
+
+function minMemoryLevel(){
+ const el=$("minMemoryLevel");
+ return el?Number(el.value):-50;
+}
+
+function criticalThreshold(){
+ const el=$("criticalThreshold");
+ return el?Number(el.value):0;
+}
+
+function isCritical(word){
+ return (word.memoryLevel||0) < criticalThreshold();
+}
+
+
+function nowTs(){
+ return Date.now();
+}
+
+function daysToMs(days){
+ return days*24*60*60*1000;
+}
+
+function minRepeatDistance(){
+ const el=$("minRepeatDistance");
+ return el?Number(el.value):3;
+}
+
+function initialReviewDays(){
+ const el=$("initialReviewDays");
+ return el?Number(el.value):1;
+}
+
+function reviewGrowthFactor(){
+ const el=$("reviewGrowthFactor");
+ return el?Number(el.value):2;
+}
+
+function isDueForReview(word){
+ return !!(word && word.nextReviewAt && word.nextReviewAt <= nowTs());
+}
+
+function isDueForLearningMetrics(word){
+ // Importante: nextReviewAt=0 significa “sem revisão marcada”, não “revisão vencida”.
+ // Só conta como revisão vencida para pontos se a carta já era dominada/manual e tinha data real vencida.
+ return !!(word && word.nextReviewAt && word.nextReviewAt <= nowTs() && isMasteredForScheduling(word));
+}
+
+function scheduleNextReview(word, success=true){
+ word.lastReviewedAt = nowTs();
+ word.totalReviews = (word.totalReviews||0)+1;
+
+ const adaptive = $("adaptiveScheduler") && $("adaptiveScheduler").checked;
+
+ if(success){
+
+   let current = word.reviewIntervalDays || initialReviewDays();
+   let growth = reviewGrowthFactor();
+
+   if(adaptive){
+
+     // palavras difíceis crescem mais lentamente
+     if(word.difficultyBoost) growth *= 0.7;
+
+     // zona crítica recente
+     if((word.memoryLevel||0) < 40) growth *= 0.8;
+
+     // estabilidade elevada acelera crescimento
+     if((word.stabilityScore||0) > 70) growth *= 1.4;
+
+     // muitas falhas históricas abrandam
+     const failPenalty = Math.min(0.4, (word.failCount||0)*0.02);
+     growth *= (1-failPenalty);
+   }
+
+   const next = word.mastered
+      ? Math.min(180, Math.max(initialReviewDays(), current * growth))
+      : initialReviewDays();
+
+   word.reviewIntervalDays = Math.round(next*10)/10;
+   word.nextReviewAt = nowTs() + daysToMs(next);
+
+ }else{
+
+   word.reviewIntervalDays = 0;
+   word.nextReviewAt = nowTs();
+ }
+}
+
+function setSessionDue(word, cardsFromNow){
+ word.sessionDueAt = (window.sessionCardCounter || 0) + cardsFromNow;
+}
+
+function isSessionDue(word){
+ return !word.sessionDueAt || word.sessionDueAt <= (window.sessionCardCounter || 0);
+}
+
+function confirmationSpacingAfterFailure(word, successes){
+ try{
+   const failed = Math.round(Number(word?.lastFailedSpacing || word?.presentedSpacing || 0));
+   const normal = normalSpacingThreshold();
+
+   // If the word has just failed above normal, confirm near the failed zone,
+   // not back at the very short 3-5 range.
+   if(failed > normal){
+     const base = Math.max(3, failed - 2);
+     if((successes||0) <= 0) return Math.max(3, Math.min(base, failed));
+     return Math.max(base, Math.min(failed + 1, base + 3));
+   }
+
+   return (successes||0) <= 0 ? randomInt(3,5) : randomInt(8,12);
+ }catch(e){
+   return (successes||0) <= 0 ? randomInt(3,5) : randomInt(8,12);
+ }
+}
+
+function plannedRepeatDistance(word){
+ const finish=(value,source)=>{
+   const dist=Math.max(0,Math.round(Number(value||0)));
+   setTestedSpacingForCard(word,dist,source||"plannedRepeatDistance");
+   return dist;
+ };
+
+ if(isCritical(word)) return finish(1,"critical");
+
+ if(isConfirmationState(word)){
+   const successes=word.retentionCheckSuccesses||0;
+   return finish(confirmationSpacingAfterFailure(word,successes),"confirmation");
+ }
+
+ const mem = word.memoryLevel || 0;
+ const roundStreak = sessionRoundStreak[sessionWordKey(word)] || 0; // apenas visual/debug
+ const historicalStreak = word.correctStreak || 0; // variável principal do espaçamento
+ const stability = word.stabilityScore || 0;
+
+ let dist = 3;
+ let category = "rápida";
+ let reason = "";
+
+ if(mem < 30){
+   dist = randomSpacing("low");
+   category = "rápida";
+   reason = "Memory <30";
+ }else if(mem < 60){
+   if(historicalStreak <= 2){
+     dist = randomSpacing("low");
+     category = "rápida";
+     reason = "Memory 30-60 + streak histórica <=2";
+   }else{
+     dist = randomSpacing("mid");
+     category = "normal";
+     reason = "Memory 30-60 + streak histórica >2";
+   }
+ }else if(mem < masterThreshold()){
+   if(historicalStreak <= 2){
+     dist = randomSpacing("low");
+     category = "rápida";
+     reason = "Memory 60-domínio + streak histórica <=2";
+   }else if(historicalStreak <= 4){
+     dist = randomSpacing("mid");
+     category = "normal";
+     reason = "Memory 60-domínio + streak histórica 3-4";
+   }else if(historicalStreak <= 8){
+     dist = randomSpacing("high");
+     category = "espaçada";
+     reason = "Memory 60-domínio + streak histórica 5-8";
+   }else{
+     dist = randomSpacing("veryHigh");
+     category = "muito espaçada";
+     reason = "Memory 60-domínio + streak histórica >8";
+   }
+ }else{
+   dist = randomSpacing("veryHigh");
+   category = "muito espaçada";
+   reason = "Memory >= domínio";
+ }
+
+ // Stability ajuda a afastar ligeiramente palavras já consolidadas.
+ if(stability >= 70) dist += 2;
+
+ if(word.difficultyBoost){
+   dist = Math.max(1, dist-2);
+   reason += " · difícil";
+ }
+
+ dist = Math.max(minRepeatDistance(), applySpacingMode(Math.round(dist*modeSpacingMult())));
+
+ // Preparação para Inspector da Palavra.
+ word.lastSpacingCategory = category;
+ word.lastSpacingDistance = dist;
+ word.lastSpacingReason = reason;
+ word.lastSpacingRoundStreak = roundStreak;
+ word.lastSpacingHistoricalStreak = historicalStreak;
+
+ return finish(dist,"plannedRepeatDistance");
+}
+
+
+
+
+function memoryLabel(word){
+ const mem=word.memoryLevel||0;
+ if(isConfirmationState(word)) return "Verificação";
+ if(word.studyState==="mastered" || word.mastered) return "Dominada";
+ if(isCritical(word)) return "Zona crítica ativa";
+ if(mem>=75) return "Quase dominada";
+ if(mem>=40) return "Aprendizagem";
+ return "Nova/fraca";
+}
+
+
+function isConfirmationState(word){
+ return (word.studyState||"new")==="relearningConfirmation" || !!word.retentionCheckPending;
+}
+
+
+var DT52_ARTICLES=["der","die","das","den","dem","des","ein","eine","einen","einem","einer"];
+
+function dt52Tokens(s){
+ return normalize(s||"").split(/\s+/).filter(Boolean);
+}
+
+function dt52Lev(a,b){
+ a=a||""; b=b||"";
+ const m=[];
+ for(let i=0;i<=b.length;i++){m[i]=[i]}
+ for(let j=0;j<=a.length;j++){m[0][j]=j}
+ for(let i=1;i<=b.length;i++){
+  for(let j=1;j<=a.length;j++){
+   if(b.charAt(i-1)==a.charAt(j-1)) m[i][j]=m[i-1][j-1];
+   else m[i][j]=Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);
+  }
+ }
+ return m[b.length][a.length];
+}
+
+function dt52Similarity(a,b){
+ const d=dt52Lev(a,b);
+ return 1-d/Math.max(a.length,b.length,1);
+}
+
+function dt52Classify(expected,spoken){
+ const cleanSpoken = normalizeVoice(spoken || "");
+ if(!cleanSpoken) return "memory";
+
+ const e = dt52Tokens(expected);
+ const s = dt52Tokens(spoken);
+
+ // ARTICLE only when article differs and remaining content is almost identical.
+ if(e.length && s.length){
+   const e0=e[0], s0=s[0];
+   if(DT52_ARTICLES.includes(e0) && DT52_ARTICLES.includes(s0) && e0 !== s0){
+     const eRest=e.slice(1).join(" ");
+     const sRest=s.slice(1).join(" ");
+     if(eRest && sRest && dt52Similarity(eRest,sRest) >= 0.85) return "article";
+   }
+ }
+
+ if(hasRequiredArticleMismatch(spoken, expected)){
+   const eRest=e.slice(1).join(" ");
+   const sRest=s.slice(1).join(" ");
+   if(eRest && sRest && dt52Similarity(eRest,sRest) >= 0.85) return "article";
+ }
+
+ // GRAMMAR only when sentence/phrase has real overlap.
+ const expectedSet=new Set(e);
+ const spokenSet=new Set(s);
+ let overlap=0;
+ expectedSet.forEach(w=>{if(spokenSet.has(w)) overlap++;});
+ const overlapRatio=overlap/Math.max(expectedSet.size,1);
+
+ const sameWordsDifferentOrder =
+   e.length===s.length && overlapRatio>=0.8 && e.join(" ")!==s.join(" ");
+
+ let smallGrammarChange=false;
+ if(e.length===s.length && e.length>=2 && overlapRatio>=0.5){
+   let diff=0, shortDiff=false;
+   for(let i=0;i<e.length;i++){
+     if(e[i]!==s[i]){
+       diff++;
+       if(e[i].length<=5 || s[i].length<=5) shortDiff=true;
+     }
+   }
+   smallGrammarChange = diff<=2 && shortDiff;
+ }
+
+ if(hasStrictGrammarMismatch(spoken, expected) && overlapRatio>=0.4) return "grammar";
+ if(sameWordsDifferentOrder || smallGrammarChange) return "grammar";
+
+ return "memory";
+}
+
+function dt52Penalty(type){
+ if(type==="article") return scoreValue("memoryArticleError",-8);
+ if(type==="grammar") return scoreValue("memoryGrammarError",-15);
+ return scoreValue("memoryMemoryError",-25);
+}
+
+
+
+function normalSpacingThreshold(){
+ const el=$("spacingMidMax");
+ return el ? Number(el.value) : 7;
+}
+
+function clampFragilityDebt(v){
+ return Math.max(0, Math.min(2, Number(v||0)));
+}
+
+function hardMinXp(){
+ return 3 * scoreValue("xpCorrect",10);
+}
+
+function estimatePresentedSpacing(word){
+ try{
+   if(!word) return 0;
+
+   const normal = normalSpacingThreshold();
+   const candidates = [];
+
+   const addCandidate = v => {
+     const n = Math.round(Number(v || 0));
+     if(n > 0) candidates.push(n);
+   };
+
+   addCandidate(word.presentedSpacing);
+   addCandidate(word.reviewIntervalDays);
+   addCandidate(word.lastSpacingDistance);
+   addCandidate(word.lastTestedSpacing);
+   addCandidate(word.bestSpacing);
+
+   // For due/mastered review cards, old databases may have reviewIntervalDays=0/1.
+   // A mastered due review represents a long-term retention test, so the attempted
+   // spacing must not collapse to 1-3. Use at least normal+1.
+   if(isDueForReview(word) && isMasteredForScheduling(word)){
+     addCandidate(normal + 1);
+   }
+
+   // Confirmation cards created after a failed review should not overwrite the
+   // failed review spacing. If no better historical signal exists, use the
+   // confirmation scheduler value, but never below the normal threshold when
+   // the word came from mastered/review status.
+   if(isConfirmationState(word)){
+     if((word.wasMasteredBeforeConfirmation || word.reviewIntervalDays > 0 || word.stabilityScore >= stabilityThreshold())){
+       addCandidate(normal + 1);
+     }
+   }
+
+   if(candidates.length){
+     return Math.max(...candidates);
+   }
+
+   // Fallback to within-session distance.
+   if(word.lastSeenCardIndex !== undefined && typeof window !== "undefined"){
+     const observed = Math.max(0, Number(window.sessionCardCounter || 0) - Number(word.lastSeenCardIndex || 0));
+     if(observed > 0) return observed;
+   }
+
+   return 0;
+ }catch(e){
+   console.warn("estimatePresentedSpacing failed", e);
+   return 0;
+ }
+}
+
+
+
+function ensurePresentedSpacingForAnswer(word, source){
+ try{
+   if(!word) return 0;
+   const spacing = Math.max(0, Math.round(Number(estimatePresentedSpacing(word) || 0)));
+   if(spacing > 0){
+     word.presentedSpacing = spacing;
+     word.presentedSpacingSource = source || "answer";
+   }
+   return spacing;
+ }catch(e){
+   console.warn("ensurePresentedSpacingForAnswer failed", e);
+   return 0;
+ }
+}
+
+
+function currentSpacingForDifficulty(word){
+ try{
+   const presented = Number(word?.presentedSpacing || 0);
+   if(presented > 0) return presented;
+
+   const estimated = estimatePresentedSpacing(word);
+   if(estimated > 0) return estimated;
+
+   const explicit = Number(word?.lastTestedSpacing || 0);
+   if(explicit > 0) return explicit;
+
+   return 0;
+ }catch(e){
+   console.warn("currentSpacingForDifficulty failed", e);
+   return 0;
+ }
+}
+
+
+
+function setTestedSpacingForCard(word, spacing, source){
+ try{
+   if(!word) return;
+   const value = Math.max(0, Math.round(Number(spacing || 0)));
+   word.lastTestedSpacing = value;
+   word.lastTestedSpacingSource = source || "unknown";
+ }catch(e){
+   console.warn("setTestedSpacingForCard failed", e);
+ }
+}
+
+
+
+function updateDifficultyModel(word, success){
+ try{
+   if(!word) return;
+   ensurePresentedSpacingForAnswer(word, success ? "answer-correct" : "answer-wrong");
+   const spacing = currentSpacingForDifficulty(word);
+   if(!spacing || spacing <= 0) return;
+   const normal = normalSpacingThreshold();
+
+   // Migração conservadora: se temos uma tentativa real mas bestSpacing ainda está a 0,
+   // usar esta tentativa como evidência histórica mínima.
+   if((word.bestSpacing||0) <= 0){
+     ensureHistoricalBestSpacing(word, spacing);
+   }
+
+   if(success){
+     if(spacing > (word.bestSpacing || 0)) word.bestSpacing = spacing;
+     if(spacing > normal) word.fragilityDebt = clampFragilityDebt((word.fragilityDebt || 0) - 0.67);
+   }else{
+     word.lastFailedSpacing = spacing;
+     if(spacing > normal) word.fragilityDebt = clampFragilityDebt((word.fragilityDebt || 0) + 1);
+   }
+ }catch(e){
+   console.warn("updateDifficultyModel failed; training continues", e);
+ }
+}
+
+
+function isFragile(word){
+ if(!word || isSuspendedCard(word)) return false;
+ return (word.bestSpacing || 0) > normalSpacingThreshold() && clampFragilityDebt(word.fragilityDebt || 0) >= 2;
+}
+
+function isResistant(word){
+ if(!word || isSuspendedCard(word) || isMasteredForScheduling(word)) return false;
+
+ const hasTelemetry =
+   (word.bestSpacing || 0) > 0 ||
+   (word.lastTestedSpacing || 0) > 0 ||
+   (word.lastFailedSpacing || 0) > 0;
+
+ if(!hasTelemetry) return false;
+
+ const enoughExposure = (word.xp || 0) >= hardMinXp();
+ const stuckAtNormalBarrier = (word.bestSpacing || 0) > 0 && (word.bestSpacing || 0) <= normalSpacingThreshold();
+
+ const fellBackToNormal =
+   clampFragilityDebt(word.fragilityDebt || 0) > 0 &&
+   (word.lastFailedSpacing || 0) > 0 &&
+   (word.lastFailedSpacing || 0) <= normalSpacingThreshold();
+
+ return (enoughExposure && stuckAtNormalBarrier) || fellBackToNormal;
+}
+
+
+
+function difficultyStateLabel(word){
+ if(isFragile(word)) return "Frágil";
+ if(isResistant(word)) return "Resistente";
+ return "";
+}
+
+function classificationLabel(word){
+ if(!word) return "—";
+ if(isFragile(word)) return "Frágil";
+ if(isResistant(word)) return "Resistente";
+ return calculatedWordState(word);
+}
+
+function ensureHistoricalBestSpacing(word, spacing){
+ try{
+   if(!word) return;
+   const s=Math.max(0,Math.round(Number(spacing||0)));
+   if(!s) return;
+   if((word.bestSpacing||0) < s) word.bestSpacing=s;
+ }catch(e){}
+}
+
+function difficultyDiagnosis(word){
+ try{
+   if(!word) return "Sem dados.";
+   const normal=normalSpacingThreshold();
+   const best=Number(word.bestSpacing||0);
+   const failed=Number(word.lastFailedSpacing||0);
+   const presented=Number(word.presentedSpacing||0);
+   const planned=Number(word.lastTestedSpacing||0);
+   const debt=clampFragilityDebt(word.fragilityDebt||0);
+   const lines=[];
+
+   if(isUncalibratedLegacy(word)){
+     lines.push("Palavra herdada de versões anteriores; a calibração começa nos próximos testes.");
+   }else if(best<=normal){
+     lines.push(`Melhor espaçamento ${best}; ainda dentro da barreira normal ${normal}.`);
+   }else{
+     lines.push(`Melhor espaçamento ${best}; já ultrapassou a barreira normal ${normal}.`);
+   }
+
+   if(failed>normal) lines.push(`Última falha ${failed}; aumenta fragilidade.`);
+   else if(failed>0) lines.push(`Última falha ${failed}; ainda dentro da barreira normal.`);
+
+   if(debt>=2) lines.push("Fragilidade completa: debt 2/2.");
+   else if(debt>0) lines.push(`Fragilidade parcial: debt ${debt.toFixed(2)}/2.`);
+
+   if(presented>0 && planned>0){
+     lines.push(`Testado em ${presented}; próximo espaçamento planeado em ${planned}.`);
+   }else if(presented>0){
+     lines.push(`Testado em ${presented}.`);
+   }else if(planned>0){
+     lines.push(`Próximo espaçamento planeado: ${planned}.`);
+   }
+
+   lines.push(barrierSummary(word));
+   lines.push(spacingProgressText(word));
+
+   return lines.join(" ");
+ }catch(e){ return "Diagnóstico indisponível."; }
+}
+
+
+
+function sourceLabel(src){
+ const map={
+   "answer-correct":"Resposta correta",
+   "answer-wrong":"Resposta errada",
+   "plannedRepeatDistance":"Espaçamento planeado",
+   "confirmation":"Confirmação",
+   "critical":"Zona crítica",
+   "difficultyFallback":"Fallback técnico",
+   "unknown":"—",
+   "":"—"
+ };
+ return map[src] || src || "—";
+}
+
+function isUncalibratedLegacy(word){
+ if(!word) return false;
+ return (word.bestSpacing||0) <= 0 && ((word.xp||0)>0 || (word.correctStreak||0)>0 || (word.memoryLevel||0)>0 || isDueForReview(word));
+}
+
+function displayBestSpacing(word){
+ if(isUncalibratedLegacy(word)) return "Não calibrado";
+ return String(Math.round(word.bestSpacing||0));
+}
+
+function visualTagLabel(word){
+ if(!word) return "—";
+ if(isFragile(word)) return "🔴 Frágil";
+ if(isResistant(word)) return "🟠 Resistente";
+ if(isConfirmationState(word)) return "🟡 Verificação";
+ if(isMasteredForScheduling(word)) return "🟢 Dominada";
+ if(isCritical(word)) return "🔴 Zona crítica";
+ return "🔵 Aprendizagem";
+}
+
+function spacingBandInfo(){
+ const normal=normalSpacingThreshold();
+ const highMin=$("spacingHighMin") ? Number($("spacingHighMin").value) : 8;
+ const highMax=$("spacingHighMax") ? Number($("spacingHighMax").value) : 12;
+ const veryMin=$("spacingVeryHighMin") ? Number($("spacingVeryHighMin").value) : 13;
+ const veryMax=$("spacingVeryHighMax") ? Number($("spacingVeryHighMax").value) : 20;
+ return {normal, highMin, highMax, veryMin, veryMax};
+}
+
+function barrierSummary(word){
+ const b=spacingBandInfo();
+ const best=Number(word?.bestSpacing||0);
+ if(isUncalibratedLegacy(word)) return `Barreira normal: ${b.normal}. Ainda sem calibração histórica.`;
+ if(best<=b.normal) return `Barreira atual: normal (${b.normal}). Próxima: espaçada (${b.highMin}–${b.highMax}).`;
+ if(best<b.veryMin) return `Barreira atual: espaçada (${b.highMin}–${b.highMax}). Próxima: muito espaçada (${b.veryMin}–${b.veryMax}).`;
+ return `Barreira atual: muito espaçada (${b.veryMin}–${b.veryMax}).`;
+}
+
+function spacingProgressText(word){
+ const b=spacingBandInfo();
+ const best=Number(word?.bestSpacing||0);
+ if(isUncalibratedLegacy(word)) return "Progresso: será calibrado nos próximos testes.";
+ if(best<=b.normal) return `Progresso: ${best}/${b.highMin} para sair da barreira normal.`;
+ if(best<b.veryMin) return `Progresso: ${best}/${b.veryMin} para chegar a muito espaçada.`;
+ return `Progresso: ${best}/${b.veryMax} dentro da zona muito espaçada.`;
+}
+
+function clampValue(v,min,max){return Math.max(min,Math.min(max,v));}
+
+function isDueScoringContext(word){
+ return !!(word && word.wasDueReviewAtPresentation && isMasteredForScheduling(word));
+}
+
+function stabilityDeltaFor(type,success,due=false){
+ if(success) return due ? scoreValue("stabilityDueCorrect",10) : scoreValue("stabilityCorrect",4);
+ if(due) return scoreValue("stabilityDueMemoryError",-18);
+ if(type==="article") return scoreValue("stabilityArticleError",-3);
+ if(type==="grammar") return scoreValue("stabilityGrammarError",-6);
+ return scoreValue("stabilityMemoryError",-12);
+}
+
+function xpDeltaFor(type,success,due=false,skip=false){
+ if(skip) return scoreValue("xpSkip",0);
+ if(success) return due ? scoreValue("xpDueCorrect",20) : scoreValue("xpCorrect",10);
+ if(due) return scoreValue("xpDueMemoryError",1);
+ if(type==="article") return scoreValue("xpArticleError",4);
+ if(type==="grammar") return scoreValue("xpGrammarError",3);
+ return scoreValue("xpMemoryError",1);
+}
+
+function applyLearningMetrics(word,type,success,skip=false){
+ const due=isDueScoringContext(word);
+ const stabilityDelta=stabilityDeltaFor(type,success,due)*modeStabilityMult();
+ const xpDelta=xpDeltaFor(type,success,due,skip)*modeXpMult();
+ word.stabilityScore=clampValue((word.stabilityScore||0)+stabilityDelta,0,100);
+ word.xp=Math.max(0,(word.xp||0)+xpDelta);
+}
+
+function setConfirmationState(word){
+ word.wasMasteredBeforeConfirmation=true;
+ word.studyState="relearningConfirmation";
+ word.mastered=false;
+ word.retentionCheckPending=true;
+ word.retentionCheckSuccesses=0;
+ word.retentionCheckFails=0;
+ word.difficultyBoost=false;
+ word.memoryLevel=Math.max(criticalThreshold()+5, Math.min(80, word.memoryLevel||75));
+}
+
+
+
+function recoverFromConfirmation(word){
+ word.studyState="mastered";
+ word.mastered=true;
+ word.retentionCheckPending=false;
+ word.wasMasteredBeforeConfirmation=false;
+ word.retentionCheckSuccesses=0;
+ word.retentionCheckFails=0;
+ word.difficultyBoost=false;
+ word.memoryLevel=Math.max(masterThreshold(), Math.min(95, word.memoryLevel||masterThreshold()));
+ word.stabilityScore=Math.max(stabilityMasterThreshold(), word.stabilityScore||0);
+ word.correctStreak=Math.max(word.correctStreak||0, minStreakToMaster());
+}
+
+
+function partialRecoverFromConfirmation(word){
+ word.studyState="relearningConfirmation";
+ word.mastered=false;
+ word.retentionCheckPending=true;
+ word.retentionCheckSuccesses=Math.min(2,(word.retentionCheckSuccesses||0)+1);
+ word.retentionCheckFails=0;
+ word.difficultyBoost=false;
+ word.memoryLevel=Math.max(Math.min(masterThreshold()-1,80), word.memoryLevel||75);
+}
+
+function failConfirmation(word){
+ word.studyState="learning";
+ word.mastered=false;
+ word.retentionCheckPending=false;
+ word.retentionCheckSuccesses=0;
+ word.retentionCheckFails=(word.retentionCheckFails||0)+1;
+ word.difficultyBoost=true;
+ word.memoryLevel=Math.min(word.memoryLevel||0, Math.max(criticalThreshold()-10, masterThreshold()-25));
+ if((word.learningState||"auto")==="mastered"){
+   word.learningState="auto";
+ }
+ word.manualMastered=false;
+}
+
+
+function syncMasteryState(word){
+ if(!word) return;
+ if(isSuspendedCard(word)){
+   word.mastered=false;
+   word.studyState="suspended";
+   return;
+ }
+ if(isManualMastered(word)){
+   word.learningState="mastered";
+   word.mastered=true;
+   word.studyState="mastered";
+   word.retentionCheckPending=false;
+   word.retentionCheckSuccesses=0;
+   word.retentionCheckFails=0;
+   word.memoryLevel=Math.max(word.memoryLevel||0, masterThreshold());
+   word.stabilityScore=Math.max(word.stabilityScore||0, stabilityMasterThreshold());
+   return;
+ }
+ if(isAutoMasteryReady(word)){
+   word.studyState="mastered";
+   word.mastered=true;
+   if((word.learningState||"auto")==="mastered") word.learningState="auto";
+ }else{
+   word.mastered=false;
+   if((word.learningState||"auto")==="mastered") word.learningState="auto";
+   if(word.studyState==="mastered") word.studyState="learning";
+   if(word.studyState!=="new" && !isConfirmationState(word)){
+     word.studyState="learning";
+   }
+ }
+}
+
+
+
+function migrateLegacyMasteryState(word){
+ if(!word) return;
+ if((word.learningState||"auto")==="suspended") return;
+ if(isManualMastered(word)) return;
+ const looksAutoMastered = !!word.mastered || word.studyState==="mastered";
+ if(looksAutoMastered && !isAutoMasteryReady(word)){
+   word.mastered=false;
+   word.studyState="relearningConfirmation";
+   word.retentionCheckPending=true;
+   word.retentionCheckSuccesses=0;
+   word.retentionCheckFails=0;
+   if((word.learningState||"auto")==="mastered") word.learningState="auto";
+ }
+}
+
+function updateMemory(word,delta){
+ const minLevel=minMemoryLevel();
+ const adjustedDelta=delta*modeMemoryMult();
+ word.memoryLevel=Math.max(minLevel,Math.min(100,(word.memoryLevel||0)+adjustedDelta));
+ syncMasteryState(word);
+}
+
+function registerCorrect(){
+if(!currentCard)return false;
+const idx=vocabulary.indexOf(currentCard);
+
+if(idx>=0){
+ const word=vocabulary[idx];
+
+ const wasMastered = isMasteredForScheduling(word);
+ const wasConfirmation = isConfirmationState(word);
+
+ word.correctStreak=(word.correctStreak||0)+1;
+ word.wrongStreak=0;
+ word.successCount=(word.successCount||0)+1;
+ word.seenCount=(word.seenCount||0)+1;
+ updateDifficultyModel(word,true);
+ const sessionKey=sessionWordKey(word);
+ sessionRoundStreak[sessionKey]=(sessionRoundStreak[sessionKey]||0)+1;
+ sessionLastCorrect[sessionKey]=true;
+ if(word.wasDueReviewAtPresentation) sessionReviewCount++;
+
+ if(wasConfirmation){
+   applyLearningMetrics(word,"memory",true,false);
+   partialRecoverFromConfirmation(word);
+   if((word.retentionCheckSuccesses||0) >= 2){
+     recoverFromConfirmation(word);
+     sessionRecoveredConfirmations++;
+   }
+ }else{
+   if(word.studyState==="new"){
+     word.studyState="learning";
+   }
+
+   applyLearningMetrics(word,"memory",true,false);
+   updateMemory(word,scoreValue("memoryCorrect",10));
+
+   if(wasMastered && word.mastered){
+     sessionMasteredRemembered++;
+   }
+ }
+
+ if(word.correctStreak>=2){
+   word.difficultyBoost=false;
+ }
+
+ if(word.mastered){
+   scheduleNextReview(word,true);
+ }
+
+ // Se a palavra ficou suficientemente forte nesta ronda, sai da ronda atual.
+ if(shouldRemoveWordFromCurrentRound(word,true)){
+   markSessionWordDone(word);
+   removeAllFromPracticeQueue(word);
+ }else if(!word.mastered && canAddMoreSessionCards()){
+   setSessionDue(word, plannedRepeatDistance(word));
+   practiceQueue.push(word);
+ }
+
+ saveVocabulary();
+
+ return word.mastered;
+}
+
+return false;
+}
+
+
+function registerWrong(type="wrong", spokenText=""){
+if(!currentCard)return;
+const idx=vocabulary.indexOf(currentCard);
+
+if(idx>=0){
+ const word=vocabulary[idx];
+
+ const wasMastered = isMasteredForScheduling(word);
+ const wasConfirmation = isConfirmationState(word);
+
+ word.correctStreak=0;
+ word.wrongStreak=(word.wrongStreak||0)+1;
+ word.failCount=(word.failCount||0)+1;
+ word.seenCount=(word.seenCount||0)+1;
+ updateDifficultyModel(word,false);
+ sessionRoundStreak[sessionWordKey(word)]=0;
+ sessionLastCorrect[sessionWordKey(word)]=false;
+
+ let errorType="memory";
+
+ if(["memory","article","grammar","memory","recognition"].includes(type)){
+   errorType = type;
+ }else if(type==="skip"){
+   errorType="memory";
+ }else if(spokenText){
+   errorType=dt52Classify(word.de, spokenText);
+ }
+
+ if(!word.errorStats){
+   word.errorStats={memory:0,article:0,grammar:0};
+ }
+ if(word.errorStats[errorType]===undefined){
+   word.errorStats[errorType]=0;
+ }
+ word.errorStats[errorType]++;
+
+ if(wasConfirmation){
+   applyLearningMetrics(word,errorType,false,type==="skip");
+   failConfirmation(word);
+   sessionFailedConfirmations++;
+ }else if(wasMastered){
+   applyLearningMetrics(word,errorType,false,type==="skip");
+   setConfirmationState(word);
+   sessionMasteredForgotten++;
+ }else{
+   word.studyState="learning";
+   word.mastered=false;
+
+   applyLearningMetrics(word,errorType,false,type==="skip");
+   updateMemory(word,dt52Penalty(errorType));
+
+   if(errorType==="memory" || errorType==="grammar"){
+      word.difficultyBoost=true;
+   }
+ }
+
+ scheduleNextReview(word,false);
+
+ if(canAddMoreSessionCards()){
+   setSessionDue(word, plannedRepeatDistance(word));
+   practiceQueue.push(word);
+ }
+
+ if($("voiceResult")){
+   let reason = "";
+
+   if(errorType==="article"){
+     reason = "erro de artigo";
+   }else if(errorType==="grammar"){
+     reason = "estrutura semelhante com pequena diferença";
+   }else{
+     reason = "estrutura não recuperada / resposta diferente";
+   }
+
+   $("voiceResult").innerHTML += `<div class="small" style="margin-top:6px;color:#b91c1c">Diagnóstico: ${errorType} · ${reason}</div>`;
+ }
+
+ saveVocabulary();
+}
+}
+
+function markKnownBySwipe(){if(!currentCard)return;correctCount++;speakGerman(currentCard.de);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`:`<div class="answer-title">Já sei ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
+function markCorrect(a){if(!currentCard)return;correctCount++;speakGerman(a);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(a)}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`:`<div class="answer-title">Correto ✅</div><div>${formatGerman(a)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
+function markWrong(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong("skip","");$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Errado ❌</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
+function skipCard(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong("skip","");$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Skip ⏭️</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
+function removeCurrentFromQueue(){
+  // A carta já foi consumida pela seleção em nextCard().
+  // Mantemos as restantes repetições planeadas para reforço inteligente.
+}
+function progressLevel(streak){
+  if(streak >= MASTER_LIMIT) return "done";
+  if(streak >= 5) return "high";
+  if(streak >= 3) return "mid";
+  return "low";
+}
+
+function compactCardMeta(w){
+ if(!w) return "";
+ const bits=[];
+ const diffLabel=difficultyStateLabel(w); if(diffLabel) bits.push(diffLabel);
+ if(w.difficultyBoost) bits.push("Difícil");
+ const state=(typeof calculatedWordState==="function") ? calculatedWordState(w) : memoryLabel(w);
+ bits.push(state);
+ bits.push(`Mem ${Math.round(w.memoryLevel||0)}%`);
+ return bits.join(" · ");
+}
+
+function renderProgress(){
+  const box=$("progressBox");
+  if(!box || !currentCard){ if(box) box.innerHTML=""; return; }
+  const streak=currentCard.correctStreak||0;
+  const roundStreak=sessionRoundStreak[sessionWordKey(currentCard)]||0;
+  const mem=Math.round(currentCard.memoryLevel||0);
+  const label=memoryLabel(currentCard);
+  const state=currentCard.studyState||"new";
+  const hard=currentCard.difficultyBoost ? `<span class="hardBadge">difícil</span>` : "";
+  const verify=isConfirmationState(currentCard) ? `<span class="verifyBadge">verificação</span>` : "";
+  const stab=Math.round(currentCard.stabilityScore||0);
+  let level="low";
+  if(isAutoMasteryReady(currentCard) || isManualMastered(currentCard)) level="done"; else if(mem>=70) level="high"; else if(mem>=40) level="mid";
+  let dots="";
+  const filled=Math.round((mem/100)*MASTER_LIMIT);
+  for(let i=1;i<=MASTER_LIMIT;i++) dots+=`<span class="dot ${i<=filled ? "on "+level : ""}">●</span>`;
+  box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memory ${mem}% · Stability ${stab}% ${isCritical(currentCard)?"· zona crítica":""} · streak ronda ${roundStreak} · streak histórica ${streak} · ${state} ${hard} ${verify}</div>`;
+}
+
+function updateStats(){
+updateSessionProgress();
+
+const mastered=vocabulary.filter(x=>x.mastered).length, active=activeVocabulary().length, hard=vocabulary.filter(x=>x.difficultyBoost&&!x.mastered).length;
+$("stats").textContent=`${active} ativas · ${mastered} excluídas · ${hard} difíceis · ${practiceQueue.length} cartões nesta sessão · ${correctCount} certas · ${wrongCount} falhadas/skip`;
+renderProgress();
+}
+
+function renderWordList(){
+const q=normalize($("searchBox")?.value||"");
+const sort=$("sortMode")?.value||"recent";
+const filterMode=$("dbFilterMode")?.value||"all";
+
+let list=vocabulary.map((item,index)=>({item,index}));
+
+if(q) list=list.filter(x=>[x.item.pt,x.item.de,(x.item.synonyms||[]).join(" "),x.item.sentence||""].some(v=>normalize(v).includes(q)));
+
+if(filterMode!=="all"){
+ list=list.filter(x=>{
+   const w=x.item;
+   const state=calculatedWordState(w);
+   if(filterMode==="words") return !isPhraseCard(w);
+   if(filterMode==="phrases") return isPhraseCard(w);
+   if(filterMode==="new") return state==="Nova";
+   if(filterMode==="learning") return isLearningCandidate(w);
+   if(filterMode==="critical") return isCritical(w);
+   if(filterMode==="confirmation") return isConfirmationState(w);
+   if(filterMode==="mastered") return isMasteredForScheduling(w);
+   if(filterMode==="due") return isReviewCandidateOrMissingDate(w) && (!w.nextReviewAt || isDueForReview(w));
+   return true;
+ });
+}
+
+if(sort==="pt") list.sort((a,b)=>a.item.pt.localeCompare(b.item.pt));
+else if(sort==="de") list.sort((a,b)=>a.item.de.localeCompare(b.item.de));
+else if(sort==="mastered") list.sort((a,b)=>(b.item.mastered?1:0)-(a.item.mastered?1:0));
+else if(sort==="memoryDesc") list.sort((a,b)=>(b.item.memoryLevel||0)-(a.item.memoryLevel||0));
+else if(sort==="memoryAsc") list.sort((a,b)=>(a.item.memoryLevel||0)-(b.item.memoryLevel||0));
+else if(sort==="streakDesc") list.sort((a,b)=>(b.item.correctStreak||0)-(a.item.correctStreak||0));
+else if(sort==="streakAsc") list.sort((a,b)=>(a.item.correctStreak||0)-(b.item.correctStreak||0));
+else if(sort==="stabilityDesc") list.sort((a,b)=>(b.item.stabilityScore||0)-(a.item.stabilityScore||0));
+else if(sort==="stabilityAsc") list.sort((a,b)=>(a.item.stabilityScore||0)-(b.item.stabilityScore||0));
+else if(sort==="dueFirst") list.sort((a,b)=>{
+  const ad=calculatedWordState(a.item)==="Revisão vencida";
+  const bd=calculatedWordState(b.item)==="Revisão vencida";
+  if(ad!==bd) return bd-ad;
+  return (a.item.nextReviewAt||Infinity)-(b.item.nextReviewAt||Infinity);
+});
+else if(sort==="reviewOldest") list.sort((a,b)=>(a.item.nextReviewAt||Infinity)-(b.item.nextReviewAt||Infinity));
+else list.sort((a,b)=>(b.item.createdAt||0)-(a.item.createdAt||0));
+
+const showMem=$("showDbMemory") ? $("showDbMemory").checked : true;
+const showStreak=$("showDbStreak") ? $("showDbStreak").checked : true;
+const showStab=$("showDbStability") ? $("showDbStability").checked : false;
+const showNext=$("showDbNextReview") ? $("showDbNextReview").checked : false;
+
+function dbMetrics(w){
+ const bits=[];
+ if(showMem) bits.push(`Memory ${Math.round(w.memoryLevel||0)}%`);
+ if(showStreak) bits.push(`Streak ${w.correctStreak||0}`);
+ if(showStab) bits.push(`Stability ${Math.round(w.stabilityScore||0)}%`);
+ if(showNext) bits.push(`Rev. ${w.nextReviewAt ? new Date(w.nextReviewAt).toLocaleDateString() : "—"}`);
+ bits.push(calculatedWordState(w));
+ bits.push(cardTypeLabel(w));
+ return bits.join(" · ");
+}
+
+const avgMemory = vocabulary.length ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/vocabulary.length) : 0;
+const dueNow = vocabulary.filter(w=>calculatedWordState(w)==="Revisão vencida").length;
+const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
+
+$("dbCount").textContent=`${list.length} de ${vocabulary.length} itens · ${vocabulary.filter(isLearningCandidate).length} em aprendizagem · ${vocabulary.filter(isMasteredForScheduling).length} dominadas · Memory média ${avgMemory}% · ${dueNow} revisões vencidas · ${criticalNow} críticas`;
+
+if(!list.length){$("wordList").innerHTML="<p class='small'>Sem resultados.</p>";return}
+$("wordList").innerHTML="";
+list.forEach(({item,index})=>{
+const div=document.createElement("div");
+div.className="item";
+const stateLabel=calculatedWordState(item);
+div.innerHTML=`<div class="item-title">${escapeHTML(item.pt)} → ${formatGerman(item.de)}</div>
+<div>
+<span class="pill">${stateLabel}</span>
+<span class="pill">${cardTypeLabel(item)}</span>
+</div>
+<div class="small">${dbMetrics(item)}</div>
+<div>
+<span class="pill">Erro memória ${Number(item.errorStats?.memory||0)}</span>
+<span class="pill">Artigos ${Number(item.errorStats?.article||0)}</span>
+<span class="pill">Gramática ${Number(item.errorStats?.grammar||0)}</span>
+<span class="pill">Próxima revisão ${item.nextReviewAt?new Date(item.nextReviewAt).toLocaleDateString():"—"}</span>
+</div>
+${item.synonyms?.length?`<div>${item.synonyms.map(s=>`<span class="pill">${escapeHTML(s)}</span>`).join("")}</div>`:""}
+${item.sentence?`<div class="small">${escapeHTML(item.sentence)}</div>`:""}
+<div class="actions">${shouldShowInspector()?`<button class="secondary" data-inspect="${index}">ℹ️</button>`:""}<button class="secondary" data-edit="${index}">Editar</button><button class="danger" data-del="${index}">Apagar</button></div>`;
+$("wordList").appendChild(div)
+});
+document.querySelectorAll("[data-inspect]").forEach(b=>b.onclick=()=>openWordInspector(Number(b.dataset.inspect)));
+document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editWord(Number(b.dataset.edit)));
+document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteWord(Number(b.dataset.del)));
+}
+
+function getSeparator(){return $("separator").value==="tab"?"\t":$("separator").value}
+function splitLine(line,sep){let r=[],c="",q=false;for(let i=0;i<line.length;i++){const ch=line[i],n=line[i+1];if(ch=='"'&&n=='"'){c+='"';i++}else if(ch=='"'){q=!q}else if(ch===sep&&!q){r.push(c.trim());c=""}else c+=ch}r.push(c.trim());return r}
+
+
+function normalizeImportedWord(w){
+ return {
+   ...w,
+   pt: w.pt || "",
+   de: w.de || "",
+   synonyms: Array.isArray(w.synonyms) ? w.synonyms : parseSynonyms(w.synonyms||""),
+   sentence: w.sentence || "",
+   createdAt: w.createdAt || Date.now(),
+   updatedAt: w.updatedAt || Date.now(),
+   correctStreak: w.correctStreak || 0,
+   wrongStreak: w.wrongStreak || 0,
+   difficultyBoost: !!w.difficultyBoost,
+   mastered: !!w.mastered,
+   manualMastered: !!w.manualMastered,
+   memoryManualAdjusted: !!w.memoryManualAdjusted,
+   stabilityManualAdjusted: !!w.stabilityManualAdjusted,
+   retentionCheckPending: !!w.retentionCheckPending,
+   retentionCheckSuccesses: w.retentionCheckSuccesses || 0,
+   retentionCheckFails: w.retentionCheckFails || 0,
+   learningState: w.learningState || (w.mastered ? "mastered" : "auto"),
+   memoryLevel: Number(w.memoryLevel || 0),
+   stabilityScore: Number(w.stabilityScore || 0),
+   xp: Number(w.xp || 0),
+   studyState: w.studyState || (w.mastered ? "mastered" : "new"),
+   successCount: w.successCount || 0,
+   failCount: w.failCount || 0,
+   seenCount: w.seenCount || 0,
+   nextReviewAt: w.nextReviewAt || 0,
+   lastReviewedAt: w.lastReviewedAt || 0,
+   reviewIntervalDays: w.reviewIntervalDays || 0,
+   totalReviews: w.totalReviews || 0,
+   lastSessionSeen: w.lastSessionSeen || 0,
+   fragilityDebt: clampFragilityDebt(w.fragilityDebt || 0),
+   lastFailedSpacing: Number(w.lastFailedSpacing || 0),
+   lastTestedSpacing: Number(w.lastTestedSpacing || 0),
+   presentedSpacing: Number(w.presentedSpacing || 0),
+   presentedSpacingSource: w.presentedSpacingSource || "",
+   wasMasteredBeforeConfirmation: !!w.wasMasteredBeforeConfirmation,
+   bestSpacing: Number(w.bestSpacing || 0),
+   errorStats: w.errorStats || {memory:0,article:0,grammar:0}
+ };
+}
+
+function extractVocabularyFromJson(data){
+ if(Array.isArray(data)) return data;
+ if(data && Array.isArray(data.vocabulary)) return data.vocabulary;
+ if(data && Array.isArray(data.words)) return data.words;
+ if(data && data.data && Array.isArray(data.data.vocabulary)) return data.data.vocabulary;
+ return null;
+}
+
+function importJsonBackup(){
+ try{
+   const fileInput=$("jsonInput") || $("jsonFile") || $("backupFile") || $("importJsonFile");
+   const textBoxes=["jsonBackupText","backupJsonText","importText","bulkText"];
+   const finish = (text)=>{
+     const payload = normalizeBackupPayload(text);
+     const result = mergeImportedWords(payload.words, "merge");
+
+     // Import settings only if app supports it and object exists.
+     if(payload.settings && typeof applyImportedSettings === "function"){
+       try{ applyImportedSettings(payload.settings); }catch(e){ console.warn("settings import ignored", e); }
+     }
+
+     safeClearImportBoxes();
+     setImportFeedback(`Backup importado: ${result.added} novos · ${result.updated} atualizados · ${result.invalid} inválidos. Total: ${result.after}.`, true);
+     runDatabaseIntegrityCheck(false);
+   };
+
+   if(fileInput && fileInput.files && fileInput.files[0]){
+     const reader = new FileReader();
+     reader.onload = () => {
+       try{ finish(String(reader.result||"")); }
+       catch(e){ console.error(e); setImportFeedback("JSON inválido ou incompatível: " + (e.message||e), false); }
+     };
+     reader.onerror = () => setImportFeedback("Erro ao ler ficheiro JSON.", false);
+     reader.readAsText(fileInput.files[0]);
+     return;
+   }
+
+   let text="";
+   for(const id of textBoxes){
+     const el=$(id);
+     if(el && el.value && el.value.trim()){
+       text=el.value.trim();
+       break;
+     }
+   }
+   if(!text){
+     setImportFeedback("Escolhe um ficheiro JSON ou cola o conteúdo do backup.", false);
+     return;
+   }
+   finish(text);
+ }catch(e){
+   console.error(e);
+   setImportFeedback("JSON inválido ou incompatível: " + (e.message||e), false);
+ }
+}
+
+
+
+function loadImportFile(e){
+ const f=e.target.files[0];
+ if(!f)return;
+ if(/\.json$/i.test(f.name || "")){
+   $("importResult").innerHTML="<strong>Este parece ser JSON.</strong> Usa a secção “Importar backup JSON” em baixo.";
+   e.target.value="";
+   return;
+ }
+ const reader=new FileReader();
+ reader.onload=x=>{
+   $("bulkText").value=x.target.result;
+   $("importResult").innerHTML="Ficheiro carregado. Clica em Importar vocabulário.";
+ };
+ reader.readAsText(f,"UTF-8");
+}
+
+
+function setImportFeedback(msg, ok=true){
+ const targets=["importStatus","bulkImportStatus","jsonImportStatus","dataStatus","importResult","jsonImportResult"];
+ for(const id of targets){
+   const el=$(id);
+   if(el){
+     el.textContent=msg;
+     el.style.color=ok ? "#166534" : "#b91c1c";
+   }
+ }
+}
+
+function normalizeBackupPayload(raw){
+ let data = raw;
+
+ if(typeof data === "string"){
+   data = JSON.parse(data);
+ }
+
+ // Accepted shapes:
+ // 1) Array of words
+ // 2) {words:[...]}
+ // 3) {vocabulary:[...]}
+ // 4) {cards:[...]}
+ // 5) {data:{words:[...]}}
+ let words = null;
+ let settings = null;
+
+ if(Array.isArray(data)){
+   words = data;
+ }else if(data && typeof data === "object"){
+   words = data.words || data.vocabulary || data.cards || (data.data && (data.data.words || data.data.vocabulary || data.data.cards));
+   settings = data.settings || data.config || data.configuration || (data.data && (data.data.settings || data.data.config));
+ }
+
+ if(!Array.isArray(words)){
+   throw new Error("Backup JSON reconhecido, mas não encontrei uma lista de palavras.");
+ }
+
+ return {words, settings, raw:data};
+}
+
+
+function wordIdentityKey(w){
+ try{
+   return [
+     String(w.article||"").trim().toLowerCase(),
+     String(w.de||"").trim().toLowerCase(),
+     String(w.pt||"").trim().toLowerCase()
+   ].join("|");
+ }catch(e){
+   return Math.random().toString(36);
+ }
+}
+function mergeImportedWords(incoming, mode="merge"){
+ const beforeCount = vocabulary.length;
+ let added=0, updated=0, skipped=0, invalid=0;
+ const byKey = new Map(vocabulary.map((w,i)=>[wordIdentityKey(w), i]));
+
+ const normalized=[];
+ for(const raw of incoming){
+   try{
+     const w = normalizeImportedWord(raw);
+     if(!w || (!w.pt && !w.de)){
+       invalid++;
+       continue;
+     }
+     normalized.push(w);
+   }catch(e){
+     invalid++;
+   }
+ }
+
+ if(mode==="replace"){
+   vocabulary = normalized;
+   added = normalized.length;
+ }else{
+   for(const w of normalized){
+     const key = wordIdentityKey(w);
+     if(byKey.has(key)){
+       const idx = byKey.get(key);
+       vocabulary[idx] = {...vocabulary[idx], ...w};
+       updated++;
+     }else{
+       vocabulary.push(w);
+       byKey.set(key, vocabulary.length-1);
+       added++;
+     }
+   }
+ }
+
+ saveVocabulary();
+ if(typeof renderDatabase === "function") renderDatabase();
+ if(typeof updateStats === "function") updateStats();
+ if(typeof buildRound === "function") buildRound();
+
+ return {before:beforeCount, after:vocabulary.length, added, updated, skipped, invalid};
+}
+
+function runDatabaseIntegrityCheck(show=true){
+ const total = vocabulary.length;
+ let corrupt=0, noPt=0, noDe=0, noArticle=0, duplicates=0;
+ const seen = new Set();
+
+ for(const w of vocabulary){
+   if(!w || typeof w !== "object"){
+     corrupt++;
+     continue;
+   }
+   if(!String(w.pt||"").trim()) noPt++;
+   if(!String(w.de||"").trim()) noDe++;
+   if((w.type||"word")==="word" && !String(w.article||"").trim() && String(w.de||"").trim().split(/\s+/).length===1) noArticle++;
+   const key = wordIdentityKey(w);
+   if(seen.has(key)) duplicates++;
+   seen.add(key);
+ }
+
+ const msg = `Integridade BD: ${total} itens · ${corrupt} corrompidos · ${noPt} sem PT · ${noDe} sem DE · ${noArticle} sem artigo · ${duplicates} duplicados.`;
+ if(show){
+   alert(msg);
+   setImportFeedback(msg, corrupt===0);
+ }
+ return {total, corrupt, noPt, noDe, noArticle, duplicates, msg};
+}
+
+function safeClearImportBoxes(){
+ ["bulkText","jsonBackupText","backupJsonText","importText","csvText"].forEach(id=>{
+   const el=$(id);
+   if(el && ("value" in el)) el.value="";
+ });
+}
+
+
+function parseCSV(text){
+ const rows=[];
+ let row=[], cur="", inQuotes=false;
+ for(let i=0;i<text.length;i++){
+   const ch=text[i], next=text[i+1];
+   if(ch==='"'){
+     if(inQuotes && next==='"'){ cur+='"'; i++; }
+     else inQuotes=!inQuotes;
+   }else if((ch===";" || ch==="," || ch==="\t") && !inQuotes){
+     row.push(cur); cur="";
+   }else if((ch==="\n" || ch==="\r") && !inQuotes){
+     if(ch==="\r" && next==="\n") i++;
+     row.push(cur); cur="";
+     if(row.some(x=>String(x||"").trim())) rows.push(row);
+     row=[];
+   }else{
+     cur+=ch;
+   }
+ }
+ row.push(cur);
+ if(row.some(x=>String(x||"").trim())) rows.push(row);
+
+ // remove header if obvious
+ if(rows.length && rows[0].join(" ").toLowerCase().match(/portugu|pt|alem|deutsch|german/)){
+   rows.shift();
+ }
+ return rows;
+}
+
+
+function importBulkText(){
+ try{
+   const boxes=["bulkText","importText","csvText"];
+   let text="";
+   for(const id of boxes){
+     const el=$(id);
+     if(el && el.value && el.value.trim()){
+       text=el.value.trim();
+       break;
+     }
+   }
+   if(!text){
+     setImportFeedback("Nada para importar. Cola CSV/vocabulário na caixa de texto.", false);
+     return;
+   }
+
+   const rows = parseCSV(text);
+   if(!rows || !rows.length){
+     setImportFeedback("Não encontrei linhas válidas para importar.", false);
+     return;
+   }
+
+   const imported=[];
+   for(const row of rows){
+     if(!row || !row.length) continue;
+     const pt=(row[0]||"").trim();
+     const deRaw=(row[1]||"").trim();
+     const synonyms=(row[2]||"").trim();
+     const example=(row[3]||"").trim();
+     if(!pt || !deRaw) continue;
+
+     let article="";
+     let de=deRaw;
+     const m=deRaw.match(/^(der|die|das|ein|eine)\s+(.+)$/i);
+     if(m){
+       article=m[1].toLowerCase();
+       de=m[2].trim();
+     }
+
+     imported.push({
+       pt, de, article,
+       synonyms,
+       example,
+       type: de.split(/\s+/).length>1 ? "phrase" : "word"
+     });
+   }
+
+   const result = mergeImportedWords(imported, "merge");
+   safeClearImportBoxes();
+   setImportFeedback(`Vocabulário importado: ${result.added} novos · ${result.updated} atualizados · ${result.invalid} inválidos. Total: ${result.after}.`, true);
+ }catch(e){
+   console.error(e);
+   setImportFeedback("Erro ao importar vocabulário: " + (e.message||e), false);
+ }
+}
+
+
+
+function csvEscape(v){v=(v||"").toString();return /[;"\n,]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function exportCsv(){const lines=["Português;Alemão;Sinónimos;Frase;Memória;Estado;Acertos;Erros;Difícil;Dominada",...vocabulary.map(x=>[x.pt,x.de,(x.synonyms||[]).join(", "),x.sentence||"",Math.round(x.memoryLevel||0),x.studyState||"new",x.successCount||0,x.failCount||0,x.difficultyBoost?"sim":"não",x.mastered?"sim":"não"].map(csvEscape).join(";"))];downloadFile("vocabulario_deutsch_trainer.csv",lines.join("\n"),"text/csv")}
+function exportJson(){downloadFile("vocabulario_deutsch_trainer.json",JSON.stringify(vocabulary,null,2),"application/json")}
+function downloadTemplate(){downloadFile("modelo_vocabulario_alemao.csv","Português;Alemão;Sinónimos;Frase\ncasa;das Haus;Haus, Zuhause;Ich gehe nach Hause.\n","text/csv")}
+function downloadFile(name,content,type){const blob=new Blob([content],{type:type+";charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
+
+function backupFilename(ext){
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+  return `deutsch-trainer-backup-${stamp}.${ext}`;
+}
+function createBackupJson(){
+  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.1",createdAt:new Date().toISOString(),vocabulary};
+  downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
+  changesSinceBackup=0;
+  localStorage.setItem("changesSinceBackup","0");
+  localStorage.setItem("lastBackupAt",new Date().toISOString());
+  updateBackupInfo();
+}
+function createBackupCsv(){
+  exportCsv();
+  changesSinceBackup=0;
+  localStorage.setItem("changesSinceBackup","0");
+  localStorage.setItem("lastBackupAt",new Date().toISOString());
+  updateBackupInfo();
+}
+function updateBackupInfo(){
+  const el=$("lastBackupInfo");
+  if(!el)return;
+  const last=localStorage.getItem("lastBackupAt");
+  const changes=Number(localStorage.getItem("changesSinceBackup")||changesSinceBackup||0);
+  el.innerHTML=`Alterações desde o último backup: <strong>${changes}</strong>${last?`<br>Último backup: ${new Date(last).toLocaleString()}`:"<br>Ainda sem backup registado neste dispositivo."}`;
+}
+function maybeShowBackupReminder(){
+  if(!$("backupReminder") || !$("backupReminder").checked)return;
+  const changes=Number(localStorage.getItem("changesSinceBackup")||0);
+  if(changes>=25) alert("Tens muitas alterações desde o último backup. Considera criar um backup JSON e guardar no iCloud Drive.");
+}
+
+
+function renderStatsPage(){
+  const total = vocabulary.length;
+  const active = activeVocabulary().length;
+  const mastered = vocabulary.filter(x=>x.mastered || x.learningState==="mastered").length;
+  const suspended = vocabulary.filter(x=>x.learningState==="suspended").length;
+  const focus = vocabulary.filter(x=>x.learningState==="focus").length;
+  const difficult = vocabulary.filter(x=>x.difficultyBoost && !x.mastered).length;
+  const critical = vocabulary.filter(x=>isCritical(x)).length;
+  const confirmation = vocabulary.filter(x=>isConfirmationState(x)).length;
+  const dueNow = vocabulary.filter(x=>isDueForReview(x) && (x.mastered || x.studyState==="mastered")).length;
+
+  const avgMemory = total ? Math.round(vocabulary.reduce((s,w)=>s+(w.memoryLevel||0),0)/total) : 0;
+  const avgStability = total ? Math.round(vocabulary.reduce((s,w)=>s+(w.stabilityScore||0),0)/total) : 0;
+  const totalXP = Math.round(vocabulary.reduce((s,w)=>s+(w.xp||0),0));
+
+  const errorTotals = {memory:0,article:0,grammar:0};
+  vocabulary.forEach(w=>{
+    const e=w.errorStats||{};
+    errorTotals.memory += Number(e.memory||0);
+    errorTotals.article += Number(e.article||0);
+    errorTotals.grammar += Number(e.grammar||0);
+  });
+  const totalErrors = errorTotals.memory + errorTotals.article + errorTotals.grammar;
+  const topError = Object.entries(errorTotals).sort((a,b)=>b[1]-a[1])[0];
+
+  const der = vocabulary.filter(x=>/^der\s+/i.test(x.de || "")).length;
+  const die = vocabulary.filter(x=>/^die\s+/i.test(x.de || "")).length;
+  const das = vocabulary.filter(x=>/^das\s+/i.test(x.de || "")).length;
+  const noArticle = vocabulary.filter(x=>! /^(der|die|das)\s+/i.test(x.de || "")).length;
+
+  const hardest = vocabulary
+    .filter(w=>(w.failCount||0)>0 || w.difficultyBoost || isCritical(w))
+    .sort((a,b)=>((b.failCount||0)+(b.errorStats?.grammar||0)+(b.errorStats?.article||0))-((a.failCount||0)+(a.errorStats?.grammar||0)+(a.errorStats?.article||0)))
+    .slice(0,10);
+
+  const weak = vocabulary.slice().sort((a,b)=>(a.memoryLevel||0)-(b.memoryLevel||0)).slice(0,10);
+
+  $("statsPageContent").innerHTML = `
+    <div class="grid2">
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Total:</strong><br>${total}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Aprendizagem:</strong><br>${active}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Dominadas manuais:</strong><br>${mastered}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Foco ativo:</strong><br>${focus}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Suspensas:</strong><br>${suspended}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Palavras difíceis:</strong><br>${difficult}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Zona crítica ativa:</strong><br>${critical}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Confirmação:</strong><br>${confirmation}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Revisões vencidas:</strong><br>${dueNow}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Memory média:</strong><br>${avgMemory}%</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Stability média:</strong><br>${avgStability}%</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>XP total:</strong><br>${totalXP}</div>
+      <div class="box" style="box-shadow:none;background:#f8fafc"><strong>Principal erro:</strong><br>${topError?topError[0]+" ("+topError[1]+")":"—"}</div>
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Tipos de erro</h3>
+      <span class="pill">Memória: ${errorTotals.memory}</span>
+      <span class="pill">Artigos: ${errorTotals.article}</span>
+      <span class="pill">Gramática: ${errorTotals.grammar}</span>
+      <br><span class="small">Total de erros classificados: ${totalErrors}</span>
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Artigos na base</h3>
+      <span class="pill">der: ${der}</span>
+      <span class="pill">die: ${die}</span>
+      <span class="pill">das: ${das}</span>
+      <span class="pill">sem artigo: ${noArticle}</span>
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Top palavras difíceis</h3>
+      ${hardest.length ? hardest.map(w=>`<div class="item"><strong>${w.pt}</strong> → ${formatGerman(w.de)}<br><span class="small">Memory: ${Math.round(w.memoryLevel||0)}% · Stability: ${Math.round(w.stabilityScore||0)}% · XP: ${Math.round(w.xp||0)} · Erros: ${w.failCount||0}</span></div>`).join("") : "<p class='small'>Ainda não há palavras difíceis.</p>"}
+    </div>
+
+    <div class="box" style="box-shadow:none;background:#f8fafc">
+      <h3>Memory mais fraca</h3>
+      ${weak.length ? weak.map(w=>`<div class="item"><strong>${w.pt}</strong> → ${formatGerman(w.de)}<br><span class="small">Memory: ${Math.round(w.memoryLevel||0)}% · Estado: ${memoryLabel(w)}</span></div>`).join("") : "<p class='small'>Sem dados.</p>"}
+    </div>
+  `;
+}
+
+
+/*
+============================================================
+TRAINING CORE FREEZE — V10.8.1.7.0
+============================================================
+Do not modify the following interaction/training functions unless a
+specific release is dedicated to the training core and tested separately:
+
+- setupSwipe()
+- nextCard()
+- revealCard()
+- markKnownBySwipe()
+- markWrong()
+- registerCorrect()
+- registerWrong()
+
+Reason:
+V10.8.1.3 is the last confirmed stable version for card tap/click,
+touch swipe and training flow. Future features must be added outside
+this core whenever possible.
+============================================================
+*/
+
+function setupSwipe(){const card=$("card");card.addEventListener("click",revealCard);card.addEventListener("touchstart",e=>{if(!currentCard)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;touchCurrentX=touchStartX;isDragging=true},{passive:true});card.addEventListener("touchmove",e=>{if(!isDragging||!currentCard)return;touchCurrentX=e.touches[0].clientX;const dx=touchCurrentX-touchStartX,dy=e.touches[0].clientY-touchStartY;if(Math.abs(dy)>Math.abs(dx))return;if(dx<-30){card.classList.add("swipe-left");card.classList.remove("swipe-right")}else if(dx>30){card.classList.add("swipe-right");card.classList.remove("swipe-left")}else card.classList.remove("swipe-left","swipe-right")},{passive:true});card.addEventListener("touchend",()=>{if(!isDragging||!currentCard)return;const dx=touchCurrentX-touchStartX;isDragging=false;card.classList.remove("swipe-left","swipe-right");if(dx<=-swipeThreshold)markKnownBySwipe();else if(dx>=swipeThreshold)markWrong()});document.addEventListener("keydown",e=>{if(!currentCard)return;if(e.key==="ArrowLeft")markKnownBySwipe();if(e.key==="ArrowRight")markWrong()})}
+
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>switchPage(t.dataset.page));
+$("saveBtn").onclick=saveWord;$("resetLearningBtn").onclick=resetLearningForCurrentEdit;$("cancelEditBtn").onclick=clearForm;$("wrongBtn").onclick=markWrong;$("skipBtn").onclick=skipCard;$("restartBtn").onclick=startPractice;$("clearBtn").onclick=clearAllWords;$("micBtn").onclick=startVoiceRecognition;
+$("fileInput").onchange=loadImportFile;$("jsonInput").onchange=importJsonBackup;$("importBtn").onclick=importBulkText;$("templateBtn").onclick=downloadTemplate;$("exportCsvBtn").onclick=exportCsv;$("exportJsonBtn").onclick=exportJson;$("backupJsonBtn").onclick=createBackupJson;$("backupCsvBtn").onclick=createBackupCsv;
+["ptWord","deWord","synonyms"].forEach(id=>$(id).addEventListener("input",renderDuplicateWarning));
+$("searchBox").oninput=renderWordList;$("sortMode").onchange=renderWordList;
+
+["dbFilterMode","showDbMemory","showDbStreak","showDbStability","showDbNextReview","showWordInspector"].forEach(id=>{
+ const el=$(id);
+ if(el) el.addEventListener("change",renderWordList);
+});
+
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}
+
+function normalizeMasteredMemory(){
+ let changed=false;
+ vocabulary.forEach(w=>{
+   const before=JSON.stringify([w.mastered,w.studyState,w.learningState,w.memoryLevel,w.stabilityScore,w.nextReviewAt]);
+   syncMasteryState(w);
+   if(isMasteredForScheduling(w) && !w.nextReviewAt){
+     w.nextReviewAt=Date.now()-1000; // sem data = revisão pendente
+     if(!w.reviewIntervalDays) w.reviewIntervalDays=1;
+   }
+   const after=JSON.stringify([w.mastered,w.studyState,w.learningState,w.memoryLevel,w.stabilityScore,w.nextReviewAt]);
+   if(before!==after) changed=true;
+ });
+ if(changed){
+   localStorage.setItem(STORAGE_KEY,JSON.stringify(vocabulary));
+ }
+ return changed;
+}
+
+function migrateLegacyWords(){
+ if(!Array.isArray(vocabulary)) return false;
+ let changed=false;
+
+ vocabulary.forEach((w,idx)=>{
+   const before=JSON.stringify(w);
+
+   if(w.manualMastered===undefined) w.manualMastered=false;
+   if(!w.learningState || (w.learningState==="mastered" && !w.manualMastered)){
+     w.learningState="auto";
+   }
+
+   if(!w.errorStats){
+     w.errorStats={memory:0,article:0,grammar:0};
+   }
+
+   if(w.errorStats && w.errorStats.pronunciation){
+     w.errorStats.memory = Number(w.errorStats.memory||0) + Number(w.errorStats.pronunciation||0);
+     delete w.errorStats.pronunciation;
+   }
+
+   syncMasteryState(w);
+
+   if(isMasteredForScheduling(w) && !w.nextReviewAt){
+     w.nextReviewAt=Date.now()-1000;
+     if(!w.reviewIntervalDays) w.reviewIntervalDays=1;
+   }
+
+   if(JSON.stringify(w)!==before) changed=true;
+ });
+
+ if(changed){
+   saveVocabulary();
+ }
+ return changed;
+}
+
+
+loadVocabulary();
+migrateLegacyWords();normalizeMasteredMemory();setupSwipe();renderWordList();startPractice();updateBackupInfo();setTimeout(maybeShowBackupReminder,1000);
+
+try{
+ if($("trainingMode")){
+   $("trainingMode").onchange=()=>{
+     updateTrainingModeInfo();
+     startPractice();
+   };
+   updateTrainingModeInfo();
+ }
+}catch(e){}
+

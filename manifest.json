@@ -1,0 +1,19 @@
+{
+  "name": "Deutsch Trainer V10.8.1.7.4",
+  "short_name": "Deutsch Trainer V10.8.1.7.4",
+  "description": "Flashcards para treinar vocabulário alemão.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f4f4",
+  "theme_color": "#1f6feb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
