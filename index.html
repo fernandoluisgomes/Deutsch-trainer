@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.8.1.7.2</title>
+<title>Deutsch Trainer V10.8.1.7.3</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -66,7 +66,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.8.1.7.2</h1>
+<h1>Deutsch Trainer V10.8.1.7.3</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
 <button class="tab" data-page="statsPage">Estatísticas</button>
@@ -202,13 +202,16 @@ Suspensa = removida do treino.
 <div class="db-toolbar"><select id="dbFilterMode">
 <option value="all">Todas</option>
 <option value="words">Palavras</option>
-<option value="phrases">Frases</option>
-<option value="new">Novas</option>
-<option value="learning">Aprendizagem</option>
-<option value="critical">Zona crítica</option>
-<option value="confirmation">Confirmação</option>
-<option value="mastered">Dominadas</option>
-<option value="due">Revisão vencida</option>
+<option value="phrases">📝 Frases</option>
+<option value="new">⚪ Novas</option>
+<option value="learning">🔵 Aprendizagem</option>
+<option value="resistant">🟠 Resistentes</option>
+<option value="review">🟢 Revisão</option>
+<option value="verification">🟡 Verificação</option>
+<option value="fragile">🔴 Frágeis</option>
+<option value="hardSmart">🔥 Difíceis</option>
+<option value="critical">⚠️ Críticas</option>
+<option value="due">⏰ Revisões vencidas</option>
 </select>
 
 <details class="compact-details"><summary>⚙️ Opções de visualização</summary><label class="small"><input type="checkbox" id="showDbMemory" checked> Memory</label>
@@ -2028,13 +2031,9 @@ function buildPracticeQueue(){
    sessionPlannedReviews=selected.filter(w=>dueMasteredAll.includes(w)).length;
  }else if(mode==="hard"){
    const hard=active
-     .filter(w=>isHardCandidate(w) && !isConfirmationState(w))
-     .sort((a,b)=>{
-       if(isCritical(a)!==isCritical(b)) return isCritical(a)?-1:1;
-       if((b.wrongStreak||0)!==(a.wrongStreak||0)) return (b.wrongStreak||0)-(a.wrongStreak||0);
-       return (a.memoryLevel||0)-(b.memoryLevel||0);
-     });
-   selected=takeBalanced([...confirmation,...critical,...hard], targetUnique);
+     .filter(w=>isViableCard(w) && isHardModeCandidate(w) && !isConfirmationState(w))
+     .sort(hardModeSort);
+   selected=takeBalanced(hard, targetUnique);
    sessionPlannedReviews=0;
  }else if(mode==="intense"){
    const newWords=active.filter(w=>(w.studyState||"new")==="new");
@@ -2169,6 +2168,7 @@ document.addEventListener("visibilitychange",()=>{
     requestWakeLock();
   }
 });
+
 
 
 function resetRoundRuntimeState(){
@@ -2913,6 +2913,45 @@ function wordStateTag(word){ return getWordState(word).text; }
 function wordPriorityTag(word){ return getWordPriority(word).text; }
 
 
+function isHardModeCandidate(word){
+ return isResistant(word) || isFragile(word);
+}
+
+function hardModeRank(word){
+ if(isResistant(word)) return 0;
+ if(isFragile(word)) return 1;
+ return 9;
+}
+
+function hardModeSort(a,b){
+ const ar=hardModeRank(a), br=hardModeRank(b);
+ if(ar!==br) return ar-br;
+ if(ar===0) return (a.xp||0)-(b.xp||0);
+ if(ar===1) return clampFragilityDebt(b.fragilityDebt||0)-clampFragilityDebt(a.fragilityDebt||0);
+ return (a.memoryLevel||0)-(b.memoryLevel||0);
+}
+
+function matchesDbFilter(word, filter){
+ const state = getWordState(word).key;
+ switch(filter){
+   case "all": return true;
+   case "words": return !isPhraseCard(word);
+   case "phrases": return isPhraseCard(word);
+   case "new": return state==="new";
+   case "learning": return state==="learning";
+   case "resistant": return state==="resistant";
+   case "review": return state==="review";
+   case "verification": return state==="verification";
+   case "fragile": return state==="fragile";
+   case "hardSmart": return isHardModeCandidate(word);
+   case "critical": return getWordPriority(word).key==="critical";
+   case "due": return isReviewCandidateOrMissingDate(word) && (!word.nextReviewAt || isDueForReview(word));
+   case "confirmation": return state==="verification";
+   case "mastered": return state==="review";
+   default: return true;
+ }
+}
+
 function spacingBandInfo(){
  const normal=normalSpacingThreshold();
  const highMin=$("spacingHighMin") ? Number($("spacingHighMin").value) : 8;
@@ -3297,19 +3336,7 @@ let list=vocabulary.map((item,index)=>({item,index}));
 if(q) list=list.filter(x=>[x.item.pt,x.item.de,(x.item.synonyms||[]).join(" "),x.item.sentence||""].some(v=>normalize(v).includes(q)));
 
 if(filterMode!=="all"){
- list=list.filter(x=>{
-   const w=x.item;
-   const state=calculatedWordState(w);
-   if(filterMode==="words") return !isPhraseCard(w);
-   if(filterMode==="phrases") return isPhraseCard(w);
-   if(filterMode==="new") return state==="Nova";
-   if(filterMode==="learning") return isLearningCandidate(w);
-   if(filterMode==="critical") return isCritical(w);
-   if(filterMode==="confirmation") return isConfirmationState(w);
-   if(filterMode==="mastered") return isMasteredForScheduling(w);
-   if(filterMode==="due") return isReviewCandidateOrMissingDate(w) && (!w.nextReviewAt || isDueForReview(w));
-   return true;
- });
+ list=list.filter(x=>matchesDbFilter(x.item, filterMode));
 }
 
 if(sort==="pt") list.sort((a,b)=>a.item.pt.localeCompare(b.item.pt));
@@ -3334,6 +3361,7 @@ const showMem=$("showDbMemory") ? $("showDbMemory").checked : true;
 const showStreak=$("showDbStreak") ? $("showDbStreak").checked : true;
 const showStab=$("showDbStability") ? $("showDbStability").checked : false;
 const showNext=$("showDbNextReview") ? $("showDbNextReview").checked : false;
+
 
 function dbMetrics(w){
  const bits=[];
@@ -3733,7 +3761,7 @@ function backupFilename(ext){
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.2",createdAt:new Date().toISOString(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.3",createdAt:new Date().toISOString(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");
