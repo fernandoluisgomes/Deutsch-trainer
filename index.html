@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.8.1.7.1</title>
+<title>Deutsch Trainer V10.8.1.7.2</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -66,7 +66,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.8.1.7.1</h1>
+<h1>Deutsch Trainer V10.8.1.7.2</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
 <button class="tab" data-page="statsPage">Estatísticas</button>
@@ -93,6 +93,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <div class="stats hidden" id="stats">0 palavras guardadas</div>
 <div id="sessionProgressInfo" class="small" style="margin:8px 0;text-align:center;color:#475569">0 respondidas · ~0 restantes</div>
 <div id="card" class="card">Adiciona palavras para começar</div>
+<div id="trainingStateTag" class="small" style="text-align:center;margin-top:6px"></div>
 <div id="progressBox" class="progressBox"></div>
 <div id="voiceResult" class="small" style="text-align:center;margin:8px 0"></div>
 <div class="micControlRow">
@@ -1875,7 +1876,7 @@ lastSeenCardIndex: ${w.lastSeenCardIndex||"—"}
 <b>Stability:</b> ${Math.round(w.stabilityScore||0)}% · mínimo ${stabilityMasterThreshold()}%<br>
 ${isConfirmationState(w) ? `<b>Verificação:</b> ${(w.retentionCheckSuccesses||0)}/2 sucessos<br>` : ""}
 <b>XP:</b> ${Math.round(w.xp||0)}<br>
-<b>Melhor espaçamento superado:</b> ${displayBestSpacing(w)} · barreira normal ${normalSpacingThreshold()}<br><b>Tag:</b> ${visualTagLabel(w)}<br><b>Barreira:</b> ${barrierSummary(w)}<br>
+<b>Melhor espaçamento superado:</b> ${displayBestSpacing(w)} · barreira normal ${normalSpacingThreshold()}<br><b>Estado:</b> ${wordStateTag(w)}<br><b>Prioridade:</b> ${wordPriorityTag(w)}<br><b>Barreira:</b> ${barrierSummary(w)}<br>
 <b>Espaçamento testado nesta resposta:</b> ${Math.round(w.presentedSpacing||0)} · fonte: ${sourceLabel(w.presentedSpacingSource)}<br>
 <b>Próximo espaçamento planeado:</b> ${Math.round(w.lastTestedSpacing||0)} · fonte: ${sourceLabel(w.lastTestedSpacingSource)}<br>
 <b>Último espaçamento falhado:</b> ${Math.round(w.lastFailedSpacing||0)}<br>
@@ -2799,11 +2800,10 @@ function difficultyStateLabel(word){
 }
 
 function classificationLabel(word){
- if(!word) return "—";
- if(isFragile(word)) return "Frágil";
- if(isResistant(word)) return "Resistente";
- return calculatedWordState(word);
+ const state = getWordState(word);
+ return state.label || "—";
 }
+
 
 function ensureHistoricalBestSpacing(word, spacing){
  try{
@@ -2881,14 +2881,37 @@ function displayBestSpacing(word){
 }
 
 function visualTagLabel(word){
- if(!word) return "—";
- if(isFragile(word)) return "🔴 Frágil";
- if(isResistant(word)) return "🟠 Resistente";
- if(isConfirmationState(word)) return "🟡 Verificação";
- if(isMasteredForScheduling(word)) return "🟢 Dominada";
- if(isCritical(word)) return "🔴 Zona crítica";
- return "🔵 Aprendizagem";
+ return wordStateTag(word);
 }
+
+
+function getWordState(word){
+ try{
+   if(!word) return {key:"unknown", label:"—", emoji:"", text:"—"};
+   const xp = Number(word.xp || 0);
+   const memory = Number(word.memoryLevel || 0);
+   const stability = Number(word.stabilityScore || 0);
+   const streak = Number(word.correctStreak || 0);
+   if(xp<=0 && memory<=0 && stability<=0 && streak<=0) return {key:"new", label:"Nova", emoji:"⚪", text:"⚪ Nova"};
+   if(isFragile(word)) return {key:"fragile", label:"Frágil", emoji:"🔴", text:"🔴 Frágil"};
+   if(isConfirmationState(word)) return {key:"verification", label:"Verificação", emoji:"🟡", text:"🟡 Verificação"};
+   if(isResistant(word)) return {key:"resistant", label:"Resistente", emoji:"🟠", text:"🟠 Resistente"};
+   if(isMasteredForScheduling(word)) return {key:"review", label:"Revisão", emoji:"🟢", text:"🟢 Revisão"};
+   return {key:"learning", label:"Aprendizagem", emoji:"🔵", text:"🔵 Aprendizagem"};
+ }catch(e){ return {key:"unknown", label:"—", emoji:"", text:"—"}; }
+}
+
+function getWordPriority(word){
+ try{
+   if(!word) return {key:"normal", label:"Normal", emoji:"", text:"Normal"};
+   if(isCritical(word)) return {key:"critical", label:"Crítica", emoji:"⚠️", text:"⚠️ Crítica"};
+   return {key:"normal", label:"Normal", emoji:"", text:"Normal"};
+ }catch(e){ return {key:"normal", label:"Normal", emoji:"", text:"Normal"}; }
+}
+
+function wordStateTag(word){ return getWordState(word).text; }
+function wordPriorityTag(word){ return getWordPriority(word).text; }
+
 
 function spacingBandInfo(){
  const normal=normalSpacingThreshold();
@@ -3230,6 +3253,13 @@ function compactCardMeta(w){
 }
 
 function renderProgress(){
+ try{
+   const tagEl=$("trainingStateTag");
+   if(tagEl){
+     tagEl.textContent = currentCard ? `${wordStateTag(currentCard)}${wordPriorityTag(currentCard)!=="Normal" ? " · "+wordPriorityTag(currentCard) : ""}` : "";
+   }
+ }catch(e){}
+
   const box=$("progressBox");
   if(!box || !currentCard){ if(box) box.innerHTML=""; return; }
   const streak=currentCard.correctStreak||0;
@@ -3247,6 +3277,7 @@ function renderProgress(){
   for(let i=1;i<=MASTER_LIMIT;i++) dots+=`<span class="dot ${i<=filled ? "on "+level : ""}">●</span>`;
   box.innerHTML=`<div class="progressDots">${dots}</div><div class="progressText">${label} · Memory ${mem}% · Stability ${stab}% ${isCritical(currentCard)?"· zona crítica":""} · streak ronda ${roundStreak} · streak histórica ${streak} · ${state} ${hard} ${verify}</div>`;
 }
+
 
 function updateStats(){
 updateSessionProgress();
@@ -3702,7 +3733,7 @@ function backupFilename(ext){
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.1",createdAt:new Date().toISOString(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.2",createdAt:new Date().toISOString(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");
