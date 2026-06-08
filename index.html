@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.8.1.7.5</title>
+<title>Deutsch Trainer V10.8.1.7.6</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -66,7 +66,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.8.1.7.5</h1>
+<h1>Deutsch Trainer V10.8.1.7.6</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
 <button class="tab" data-page="statsPage">Estatísticas</button>
@@ -3721,18 +3721,12 @@ function importBulkText(){
    for(const row of rows){
      if(!row || !row.length) continue;
      const pt=(row[0]||"").trim();
-     const deRaw=(row[1]||"").trim();
+     const de=(row[1]||"").trim();
      const synonyms=(row[2]||"").trim();
      const sentence=(row[3]||"").trim();
-     if(!pt || !deRaw) continue;
+     if(!pt || !de) continue;
 
-     let article="";
-     let de=deRaw;
-     const m=deRaw.match(/^(der|die|das|ein|eine)\s+(.+)$/i);
-     if(m){
-       article=m[1].toLowerCase();
-       de=m[2].trim();
-     }
+     const article="";
 
      imported.push({
        pt, de, article,
@@ -3750,6 +3744,7 @@ function importBulkText(){
    setImportFeedback("Erro ao importar vocabulário: " + (e.message||e), false);
  }
 }
+
 
 
 
@@ -3847,7 +3842,7 @@ function backupFilename(ext){
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.5",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.1.7.6",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");
