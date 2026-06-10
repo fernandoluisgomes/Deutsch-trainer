@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#1f6feb"/>
-  <text x="256" y="205" text-anchor="middle" font-size="80" font-family="Arial, sans-serif" font-weight="700" fill="white">DE</text>
-  <text x="256" y="315" text-anchor="middle" font-size="58" font-family="Arial, sans-serif" fill="white">PT</text>
-  <path d="M150 365h212" stroke="white" stroke-width="24" stroke-linecap="round"/>
-</svg>
