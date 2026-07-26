@@ -2,6 +2,23 @@
 const STORAGE_KEY="vocabularyGermanTrainer_v5";
 const SETTINGS_KEY="deutschTrainerSettings_v1"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
+
+// V10.8.2.0 — language-pair architecture (Stage 1, no visible behaviour change)
+const Direction = Object.freeze({
+  A_TO_B: "A_TO_B",
+  B_TO_A: "B_TO_A",
+  MIXED: "MIXED"
+});
+
+const DEFAULT_DECK = Object.freeze({
+  languageA: Object.freeze({name:"Português", code:"pt-PT", field:"pt"}),
+  languageB: Object.freeze({name:"Deutsch", code:"de-DE", field:"de"})
+});
+
+let activeDeck = DEFAULT_DECK;
+let currentTrainingContext = null;
+let trainingPresentationCounter = 0;
+
 let vocabulary=[],practiceQueue=[],currentCard=null,revealed=false,correctCount=0,wrongCount=0;let sessionWords=new Set(),sessionPlannedWords=new Set(),sessionDoneWords=new Set(),sessionReviewCount=0,sessionPlannedReviews=0,sessionDueReviewsTotal=0,sessionRoundStreak={},sessionLastCorrect={};let sessionStartedAt=Date.now(),sessionInitialSnapshot={};window.sessionCardCounter=0;let sessionMasteredRemembered=0,sessionMasteredForgotten=0,sessionRecoveredConfirmations=0,sessionFailedConfirmations=0;
 let touchStartX=0,touchStartY=0,touchCurrentX=0,isDragging=false;const swipeThreshold=80;let recognition=null;let isListening=false;let micMasterOn=false;let autoMicTimer=null;let autoMicRetryTimer=null;let appIsSpeaking=false;let appSpeechCooldownUntil=0;let autoMicSilentStartedAt=0;let changesSinceBackup=Number(localStorage.getItem('changesSinceBackup')||0);
 
@@ -42,6 +59,57 @@ function saveVocabulary(){
 }
 function parseSynonyms(t){return t?t.split(",").map(s=>s.trim()).filter(Boolean):[]}
 function getAllAnswers(c){const a=[c.de,...(c.synonyms||[])],u=[];for(const x of a)if(x&&!u.some(y=>normalize(y)===normalize(x)))u.push(x);return u}
+
+function getCardSide(card, side, deck=activeDeck){
+  if(!card) return "";
+  const language = side === "A" ? deck.languageA : deck.languageB;
+  return String(card[language.field] ?? "").trim();
+}
+
+function getAcceptedAnswersForSide(card, side){
+  if(!card) return [];
+  if(side === "B") return getAllAnswers(card);
+
+  const primary = getCardSide(card, "A");
+  const alternatives = Array.isArray(card.synonymsA) ? card.synonymsA : [];
+  const unique=[];
+  for(const answer of [primary, ...alternatives]){
+    if(answer && !unique.some(existing => normalize(existing) === normalize(answer))){
+      unique.push(answer);
+    }
+  }
+  return unique;
+}
+
+function resolvePresentationDirection(directionSetting=Direction.A_TO_B){
+  if(directionSetting === Direction.MIXED){
+    return Math.random() < 0.5 ? Direction.A_TO_B : Direction.B_TO_A;
+  }
+  return directionSetting === Direction.B_TO_A ? Direction.B_TO_A : Direction.A_TO_B;
+}
+
+function buildTrainingContext(card, options={}){
+  if(!card) return null;
+  const deck = options.deck || activeDeck;
+  const direction = resolvePresentationDirection(options.direction || Direction.A_TO_B);
+  const questionSide = direction === Direction.B_TO_A ? "B" : "A";
+  const answerSide = questionSide === "A" ? "B" : "A";
+  const questionLanguage = questionSide === "A" ? deck.languageA : deck.languageB;
+  const answerLanguage = answerSide === "A" ? deck.languageA : deck.languageB;
+
+  return Object.freeze({
+    presentationId: ++trainingPresentationCounter,
+    card,
+    direction,
+    questionSide,
+    answerSide,
+    questionText: getCardSide(card, questionSide, deck),
+    answerText: getCardSide(card, answerSide, deck),
+    expectedAnswers: Object.freeze(getAcceptedAnswersForSide(card, answerSide)),
+    questionLanguage: Object.freeze({...questionLanguage}),
+    answerLanguage: Object.freeze({...answerLanguage})
+  });
+}
 function allGermanTerms(c){return getAllAnswers(c).map(normalize)}
 function activeVocabulary(){ return vocabulary.filter(x => isLearningCandidate(x)); }
 
@@ -96,6 +164,19 @@ function pauseRecognitionForAppSpeech(){
   if(micMasterOn && isAutoMicMode()){
     setMicStatus("preparing", "preparação");
   }
+}
+
+// Generic TTS entry point for future language pairs. Existing PT/DE wrappers remain active in Stage 1.
+function speakText(text, languageCode, options={}){
+  if(!("speechSynthesis" in window)) return null;
+  const utterance = new SpeechSynthesisUtterance(String(text || ""));
+  utterance.lang = languageCode || "";
+  utterance.rate = Number.isFinite(options.rate) ? options.rate : 0.85;
+  utterance.pitch = Number.isFinite(options.pitch) ? options.pitch : 1;
+  utterance.onstart = options.onstart || markAppSpeechStart;
+  utterance.onend = options.onend || markAppSpeechEnd;
+  utterance.onerror = options.onerror || markAppSpeechEnd;
+  return utterance;
 }
 
 function speakGerman(text){
@@ -971,7 +1052,7 @@ setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),50);
 }
 
 function deleteWord(i){if(!confirm("Apagar esta palavra?"))return;vocabulary.splice(i,1);saveVocabulary();renderWordList();startPractice()}
-function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;correctCount=0;wrongCount=0;updateSessionProgress();saveVocabulary();renderWordList();startPractice()}
+function clearAllWords(){if(!confirm("Queres mesmo apagar todo o vocabulário?"))return;vocabulary=[];practiceQueue=[];currentCard=null;currentTrainingContext=null;correctCount=0;wrongCount=0;updateSessionProgress();saveVocabulary();renderWordList();startPractice()}
 
 
 
@@ -1044,6 +1125,7 @@ const criticalNow = vocabulary.filter(w=>isCritical(w)).length;
 function showSessionComplete(){
   releaseWakeLock();
   currentCard=null;
+  currentTrainingContext=null;
   const card=$("card");
   card.className="card revealed";
   card.innerHTML=sessionSummaryHtml();
@@ -1719,6 +1801,7 @@ document.addEventListener("visibilitychange",()=>{
 function resetRoundRuntimeState(){
  stopAllMicActivity();
  currentCard=null;
+ currentTrainingContext=null;
  practiceQueue=[];
  correctCount=0;
  wrongCount=0;
@@ -1787,6 +1870,7 @@ due.sort((a,b)=>{
 
 const pick=due[0];
 currentCard=pick.c;
+currentTrainingContext=buildTrainingContext(currentCard);
 markSessionWord(currentCard);
 practiceQueue.splice(pick.i,1);
 currentCard.sessionAppearances=(currentCard.sessionAppearances||0)+1;
@@ -3386,7 +3470,7 @@ function backupFilename(ext){
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.8.1.8",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.2.0-stage1",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");
