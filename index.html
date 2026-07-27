@@ -459,7 +459,7 @@ const STORAGE_KEY="vocabularyGermanTrainer_v5";
 const SETTINGS_KEY="deutschTrainerSettings_v1"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
 
-// V10.8.2.0 — language-pair architecture (Stage 1, no visible behaviour change)
+// V10.8.2.1 — TrainingContext refactor (Stage 2, no visible behaviour change)
 const Direction = Object.freeze({
   A_TO_B: "A_TO_B",
   B_TO_A: "B_TO_A",
@@ -566,6 +566,26 @@ function buildTrainingContext(card, options={}){
     answerLanguage: Object.freeze({...answerLanguage})
   });
 }
+function getCurrentTrainingContext(){
+  if(!currentCard) return null;
+  if(!currentTrainingContext || currentTrainingContext.card !== currentCard){
+    currentTrainingContext = buildTrainingContext(currentCard);
+  }
+  return currentTrainingContext;
+}
+
+function isGermanLanguage(language){
+  return !!language && String(language.code || "").toLowerCase().startsWith("de");
+}
+
+function formatTrainingText(text, language){
+  return isGermanLanguage(language) ? formatGerman(text) : escapeHtml(text);
+}
+
+function prepareTrainingSpeechText(text, language){
+  return isGermanLanguage(language) ? cleanGermanForSpeech(text) : String(text || "");
+}
+
 function allGermanTerms(c){return getAllAnswers(c).map(normalize)}
 function activeVocabulary(){ return vocabulary.filter(x => isLearningCandidate(x)); }
 
@@ -635,46 +655,47 @@ function speakText(text, languageCode, options={}){
   return utterance;
 }
 
-function speakGerman(text){
-  if(!$("speechEnabled") || !$("speechEnabled").checked) return;
+function speakTrainingText(text, language, role="answer"){
   if(!("speechSynthesis" in window)) return;
+
+  if(role === "question"){
+    // Legacy setting name retained for compatibility; functionally this controls reading the question side.
+    if(!$("speakPortuguese") || !$("speakPortuguese").checked) return;
+  }else{
+    // Legacy setting name retained for compatibility; functionally this controls reading the answer side.
+    if(!$("speechEnabled") || !$("speechEnabled").checked) return;
+  }
+
   pauseRecognitionForAppSpeech();
-  const utterance = new SpeechSynthesisUtterance(cleanGermanForSpeech(text));
-  utterance.lang = "de-DE";
-  utterance.rate = 0.85;
-  utterance.pitch = 1;
-  utterance.onstart = markAppSpeechStart;
-  utterance.onend = markAppSpeechEnd;
-  utterance.onerror = markAppSpeechEnd;
+  const rate = role === "question" ? 0.82 : 0.85;
+  const utterance = speakText(prepareTrainingSpeechText(text, language), language?.code || "", {rate, pitch:1});
+  if(!utterance) return;
+
+  if(role === "question"){
+    // Preserve the existing pause so the new question is not cut off by previous answer feedback.
+    markAppSpeechStart();
+    setTimeout(() => {
+      if(window.speechSynthesis.speaking){
+        setTimeout(() => window.speechSynthesis.speak(utterance), 1200);
+      }else{
+        window.speechSynthesis.speak(utterance);
+      }
+    }, 1300);
+    return;
+  }
+
   window.speechSynthesis.cancel();
   markAppSpeechStart();
   window.speechSynthesis.speak(utterance);
 }
 
+// Compatibility wrappers retained while the rest of the app migrates to TrainingContext.
+function speakGerman(text){
+  speakTrainingText(text, activeDeck.languageB, "answer");
+}
+
 function speakPortuguese(text){
-  if(!$("speakPortuguese") || !$("speakPortuguese").checked) return;
-  if(!("speechSynthesis" in window)) return;
-
-  pauseRecognitionForAppSpeech();
-
-  const utterance = new SpeechSynthesisUtterance(text || "");
-  utterance.lang = "pt-PT";
-  utterance.rate = 0.82;
-  utterance.pitch = 1;
-  utterance.onstart = markAppSpeechStart;
-  utterance.onend = markAppSpeechEnd;
-  utterance.onerror = markAppSpeechEnd;
-
-  // Pausa maior para não cortar a resposta alemã anterior.
-  // Não usamos cancel() aqui, porque isso interrompia a voz alemã.
-  markAppSpeechStart();
-  setTimeout(() => {
-    if(window.speechSynthesis.speaking){
-      setTimeout(() => window.speechSynthesis.speak(utterance), 1200);
-    } else {
-      window.speechSynthesis.speak(utterance);
-    }
-  }, 1300);
+  speakTrainingText(text, activeDeck.languageA, "question");
 }
 
 function stripGermanArticle(text){
@@ -851,9 +872,10 @@ function isSmartCloseEnough(spoken, expected){
 }
 
 function checkVoiceAnswer(spokenText){
-  if(!currentCard) return false;
+  const context = getCurrentTrainingContext();
+  if(!context) return false;
 
-  const accepted = getAllAnswers(currentCard);
+  const accepted = context.expectedAnswers;
 
   for(const ans of accepted){
     if(isSmartCloseEnough(spokenText, ans)){
@@ -867,16 +889,18 @@ function checkVoiceAnswer(spokenText){
 
 function showVoiceCardFeedback(correct, heard, expected){
   const card = $("card");
+  const context = getCurrentTrainingContext();
+  const formattedExpected = formatTrainingText(expected, context?.answerLanguage);
   if(correct){
     card.className = "card green revealed";
     card.innerHTML = `
-      <div class="answer-title">✅ ${formatGerman(expected)}</div>
+      <div class="answer-title">✅ ${formattedExpected}</div>
     `;
   }else{
     card.className = "card red revealed";
     card.innerHTML = `
-      <div class="answer-title">❌ ${heard || "?"}</div>
-      <div style="margin-top:14px">✅ ${formatGerman(expected)}</div>
+      <div class="answer-title">❌ ${escapeHtml(heard || "?")}</div>
+      <div style="margin-top:14px">✅ ${formattedExpected}</div>
     `;
   }
 }
@@ -905,8 +929,9 @@ function wordWithoutArticleMatch(spokenText, expectedText){
 }
 
 function bestExpectedAnswer(spokenText){
-  if(!currentCard) return "";
-  const accepted = getAllAnswers(currentCard);
+  const context = getCurrentTrainingContext();
+  if(!context) return "";
+  const accepted = context.expectedAnswers;
   const exact = accepted.find(a => exactVoiceMatch(spokenText, a));
   if(exact) return exact;
 
@@ -917,17 +942,20 @@ function bestExpectedAnswer(spokenText){
 }
 
 function shouldRepeatHeard(spokenText){
-  if(!currentCard) return false;
-  const accepted = getAllAnswers(currentCard);
+  const context = getCurrentTrainingContext();
+  if(!context) return false;
+  const accepted = context.expectedAnswers;
   return accepted.some(a => exactVoiceMatch(spokenText, a));
 }
 
 function speakFeedbackForVoice(correct, heard){
+  const context = getCurrentTrainingContext();
   const expected = bestExpectedAnswer(heard);
+  if(!context) return expected;
   if(correct && shouldRepeatHeard(heard)){
-    speakGerman(heard);
+    speakTrainingText(heard, context.answerLanguage, "answer");
   }else{
-    speakGerman(expected);
+    speakTrainingText(expected, context.answerLanguage, "answer");
   }
   return expected;
 }
@@ -1000,9 +1028,11 @@ function tryStartListening(autoStarted=false){
     return;
   }
 
-  if(!currentCard) return;
+  const context = getCurrentTrainingContext();
+  if(!context) return;
   if(!recognition) recognition = setupRecognition();
   if(!recognition) return;
+  recognition.lang = context.answerLanguage.code;
 
   if(shouldWaitForPortugueseBeforeMic() && appAudioActive()){
     setMicStatus("preparing", "preparação");
@@ -1128,7 +1158,7 @@ function setupRecognition(){
     return null;
   }
   const rec = new SpeechRecognition();
-  rec.lang = "de-DE";
+  rec.lang = getCurrentTrainingContext()?.answerLanguage?.code || activeDeck.languageB.code;
   rec.interimResults = false;
   rec.continuous = false;
   rec.maxAlternatives = 5;
@@ -1137,7 +1167,9 @@ function setupRecognition(){
     isListening = true;
     setMicButton(true);
     setMicStatus("listening", "a ouvir…");
-    $("voiceResult").innerHTML = "<span class='voiceListening'>A ouvir... diz a resposta em alemão</span>";
+    const context = getCurrentTrainingContext();
+    const languageName = context?.answerLanguage?.name || "língua de resposta";
+    $("voiceResult").innerHTML = `<span class='voiceListening'>A ouvir... diz a resposta em ${languageName}</span>`;
   };
 
   rec.onend = () => {
@@ -1173,7 +1205,9 @@ function setupRecognition(){
     resetAutoMicSilentTimer();
     const alternatives = Array.from(event.results[0]).map(r => r.transcript);
     const best = alternatives[0] || "";
-    const accepted = getAllAnswers(currentCard);
+    const context = getCurrentTrainingContext();
+    if(!context) return;
+    const accepted = context.expectedAnswers;
     const expected = accepted[0] || "";
     const correct = alternatives.some(t => checkVoiceAnswer(t));
 
@@ -1245,9 +1279,10 @@ function stopVoiceRecognition(){
 
 function renderCurrentTrainingCard(){
  const card=$("card");
- if(!card || !currentCard) return;
+ const context=getCurrentTrainingContext();
+ if(!card || !context) return;
  card.className="card";
- card.innerHTML=currentCard.pt;
+ card.innerHTML=escapeHtml(context.questionText);
  $("answerArea").classList.add("hidden");
  if($("voiceResult")) $("voiceResult").innerHTML="";
  updateStats();
@@ -2291,6 +2326,7 @@ if(sessionAnsweredCount()>=getMaxCardsPerSession() || canEndSessionAdaptive()){
   return;
 }
 revealed=false;
+currentTrainingContext=null;
 $("answerArea").classList.add("hidden");
 if($("voiceResult"))$("voiceResult").innerHTML="";
 const card=$("card");
@@ -2333,10 +2369,10 @@ currentCard.sessionAppearances=(currentCard.sessionAppearances||0)+1;
 currentCard.lastSeenCardIndex=window.sessionCardCounter;
 currentCard.wasDueReviewAtPresentation = !!(currentCard.nextReviewAt && currentCard.nextReviewAt <= nowTs() && isMasteredForScheduling(currentCard));
 
-card.innerHTML=currentCard.pt;
+card.innerHTML=escapeHtml(currentTrainingContext.questionText);
 updateStats();
 renderProgress();
-speakPortuguese(currentCard.pt);
+speakTrainingText(currentTrainingContext.questionText, currentTrainingContext.questionLanguage, "question");
 forceMicStartSoonNoPortuguese();
 
 if(micMasterOn && isAutoMicMode()){
@@ -2345,19 +2381,21 @@ if(micMasterOn && isAutoMicMode()){
 }
 
 function revealCard(){
-if(!currentCard)return;
+const context=getCurrentTrainingContext();
+if(!context)return;
 const card=$("card");
 if(revealed){
   revealed=false;
   $("answerArea").classList.add("hidden");
   card.className="card";
-  card.innerHTML=currentCard.pt;
+  card.innerHTML=escapeHtml(context.questionText);
   return;
 }
 revealed=true;
 card.className="card revealed";
-const ans=getAllAnswers(currentCard);
-card.innerHTML=`<div class="answer-title">${formatGerman(currentCard.de)}</div><div><strong>Respostas aceites:</strong><br>${ans.join(" · ")}</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}<div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}% · ${memoryLabel(currentCard)}</div>`;
+const ans=context.expectedAnswers;
+const formattedAnswers=ans.map(answer=>formatTrainingText(answer, context.answerLanguage));
+card.innerHTML=`<div class="answer-title">${formatTrainingText(context.answerText, context.answerLanguage)}</div><div><strong>Respostas aceites:</strong><br>${formattedAnswers.join(" · ")}</div>${currentCard.sentence?`<div class="sentence">${escapeHtml(currentCard.sentence)}</div>`:""}<div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}% · ${memoryLabel(currentCard)}</div>`;
 renderSynonymButtons(ans);
 $("answerArea").classList.remove("hidden");
 }
@@ -3350,10 +3388,54 @@ if(idx>=0){
 }
 }
 
-function markKnownBySwipe(){if(!currentCard)return;correctCount++;speakGerman(currentCard.de);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`:`<div class="answer-title">Já sei ✅</div><div>${formatGerman(currentCard.de)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
-function markCorrect(a){if(!currentCard)return;correctCount++;speakGerman(a);const masteredNow=registerCorrect();removeCurrentFromQueue();$("card").className="card green revealed";$("card").innerHTML=masteredNow?`<div class="answer-title">Dominada ✅</div><div>${formatGerman(a)}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`:`<div class="answer-title">Correto ✅</div><div>${formatGerman(a)}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;setTimeout(nextCard,masteredNow?2200:1800)}
-function markWrong(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong("skip","");$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Errado ❌</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
-function skipCard(){if(!currentCard)return;wrongCount++;speakGerman(currentCard.de);registerWrong("skip","");$("card").className="card red revealed";$("card").innerHTML=`<div class="answer-title">Skip ⏭️</div><div>A resposta era: <strong>${formatGerman(currentCard.de)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${currentCard.sentence}</div>`:""}`;setTimeout(nextCard,2200)}
+function markKnownBySwipe(){
+  const context=getCurrentTrainingContext();
+  if(!context)return;
+  correctCount++;
+  speakTrainingText(context.answerText, context.answerLanguage, "answer");
+  const masteredNow=registerCorrect();
+  removeCurrentFromQueue();
+  $("card").className="card green revealed";
+  const answer=formatTrainingText(context.answerText, context.answerLanguage);
+  $("card").innerHTML=masteredNow
+    ? `<div class="answer-title">Dominada ✅</div><div>${answer}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`
+    : `<div class="answer-title">Já sei ✅</div><div>${answer}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;
+  setTimeout(nextCard,masteredNow?2200:1800);
+}
+function markCorrect(a){
+  const context=getCurrentTrainingContext();
+  if(!context)return;
+  correctCount++;
+  speakTrainingText(a, context.answerLanguage, "answer");
+  const masteredNow=registerCorrect();
+  removeCurrentFromQueue();
+  $("card").className="card green revealed";
+  const answer=formatTrainingText(a, context.answerLanguage);
+  $("card").innerHTML=masteredNow
+    ? `<div class="answer-title">Dominada ✅</div><div>${answer}</div><div class="small">Memória consolidada. Esta palavra sai da ronda atual e passa para revisão.</div>`
+    : `<div class="answer-title">Correto ✅</div><div>${answer}</div><div class="small">Memória: ${Math.round(currentCard.memoryLevel||0)}%</div>`;
+  setTimeout(nextCard,masteredNow?2200:1800);
+}
+function markWrong(){
+  const context=getCurrentTrainingContext();
+  if(!context)return;
+  wrongCount++;
+  speakTrainingText(context.answerText, context.answerLanguage, "answer");
+  registerWrong("skip","");
+  $("card").className="card red revealed";
+  $("card").innerHTML=`<div class="answer-title">Errado ❌</div><div>A resposta era: <strong>${formatTrainingText(context.answerText, context.answerLanguage)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${escapeHtml(currentCard.sentence)}</div>`:""}`;
+  setTimeout(nextCard,2200);
+}
+function skipCard(){
+  const context=getCurrentTrainingContext();
+  if(!context)return;
+  wrongCount++;
+  speakTrainingText(context.answerText, context.answerLanguage, "answer");
+  registerWrong("skip","");
+  $("card").className="card red revealed";
+  $("card").innerHTML=`<div class="answer-title">Skip ⏭️</div><div>A resposta era: <strong>${formatTrainingText(context.answerText, context.answerLanguage)}</strong></div><div class="small">Memória atualizada: ${Math.round(currentCard.memoryLevel||0)}%</div>${currentCard.sentence?`<div class="sentence">${escapeHtml(currentCard.sentence)}</div>`:""}`;
+  setTimeout(nextCard,2200);
+}
 function removeCurrentFromQueue(){
   // A carta já foi consumida pela seleção em nextCard().
   // Mantemos as restantes repetições planeadas para reforço inteligente.
