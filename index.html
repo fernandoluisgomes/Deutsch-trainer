@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.8.2.0 Stage 1</title>
+<title>Deutsch Trainer V10.8.2.2 Stage 2</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -66,7 +66,7 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.8.2.0 Stage 1</h1>
+<h1>Deutsch Trainer V10.8.2.2 Stage 2</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
 <button class="tab" data-page="statsPage">Estatísticas</button>
@@ -459,7 +459,7 @@ const STORAGE_KEY="vocabularyGermanTrainer_v5";
 const SETTINGS_KEY="deutschTrainerSettings_v1"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
 
-// V10.8.2.1 — TrainingContext refactor (Stage 2, no visible behaviour change)
+// V10.8.2.2 — TrainingContext refactor (Stage 2, no visible behaviour change)
 const Direction = Object.freeze({
   A_TO_B: "A_TO_B",
   B_TO_A: "B_TO_A",
@@ -642,7 +642,7 @@ function pauseRecognitionForAppSpeech(){
   }
 }
 
-// Generic TTS entry point for future language pairs. Existing PT/DE wrappers remain active in Stage 1.
+// Generic TTS entry point for future language pairs. Existing PT/DE wrappers remain active in Stage 2 for compatibility.
 function speakText(text, languageCode, options={}){
   if(!("speechSynthesis" in window)) return null;
   const utterance = new SpeechSynthesisUtterance(String(text || ""));
@@ -4008,7 +4008,7 @@ function backupFilename(ext){
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.8.2.0-stage1",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.2.2-stage2",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");
