@@ -1,7 +1,7 @@
 {
-  "name": "Deutsch Trainer V10.8.2.2 Stage 2",
-  "short_name": "Deutsch Trainer V10.8.2.2",
-  "description": "Flashcards para treinar vocabulário alemão.",
+  "name": "Deutsch Trainer V10.8.3.0 Stage 3",
+  "short_name": "Deutsch Trainer V10.8.3.0",
+  "description": "Flashcards bidirecionais para treinar vocabulário alemão.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

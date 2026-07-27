@@ -3,7 +3,7 @@ const STORAGE_KEY="vocabularyGermanTrainer_v5";
 const SETTINGS_KEY="deutschTrainerSettings_v1"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
 
-// V10.8.2.2 — language-pair architecture and TrainingContext refactor (Stage 2, no visible behaviour change)
+// V10.8.3.0 — Bidirectional training (Stage 3)
 const Direction = Object.freeze({
   A_TO_B: "A_TO_B",
   B_TO_A: "B_TO_A",
@@ -166,7 +166,7 @@ function pauseRecognitionForAppSpeech(){
   }
 }
 
-// Generic TTS entry point for future language pairs. Existing PT/DE wrappers remain active in Stage 2 for compatibility.
+// Generic TTS entry point for future language pairs. Existing PT/DE wrappers remain available for compatibility.
 function speakText(text, languageCode, options={}){
   if(!("speechSynthesis" in window)) return null;
   const utterance = new SpeechSynthesisUtterance(String(text || ""));
@@ -3470,7 +3470,7 @@ function backupFilename(ext){
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.8.2.2-stage2",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.3.0-stage3",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");

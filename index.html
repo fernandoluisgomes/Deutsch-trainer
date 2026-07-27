@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deutsch Trainer V10.8.2.2 Stage 2</title>
+<title>Deutsch Trainer V10.8.3.0 Stage 3</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f6feb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -61,12 +61,16 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
 .compact-details summary{font-weight:700;cursor:pointer}
 #sessionProgressInfo{font-size:.95rem;line-height:1.35;margin:4px 0 8px}
 #roundDetails{font-size:.9rem;line-height:1.45}
+.direction-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px}
+.direction-row label{font-weight:700}
+#trainingDirection{min-width:210px}
+#directionBadge{display:inline-flex;align-items:center;justify-content:center;min-width:72px;padding:4px 9px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:.8rem;font-weight:800;letter-spacing:.02em}
 </style>
 </head>
 <body>
 <div class="container">
 <header>
-<h1>Deutsch Trainer V10.8.2.2 Stage 2</h1>
+<h1>Deutsch Trainer V10.8.3.0 Stage 3</h1>
 <div class="tabs">
 <button class="tab active" data-page="train">Treinar</button>
 <button class="tab" data-page="statsPage">Estatísticas</button>
@@ -89,6 +93,15 @@ input[type="checkbox"]{width:auto;margin-right:8px}button{padding:12px 16px;bord
       <option value="reviews">Revisões</option>
     </select>
   <span class="small" id="trainingModeInfo">Treino equilibrado.</span>
+</div>
+<div class="direction-row">
+  <label for="trainingDirection">Direção</label>
+  <select id="trainingDirection">
+    <option value="A_TO_B">Português → Alemão</option>
+    <option value="B_TO_A">Alemão → Português</option>
+    <option value="MIXED">Misto (50% / 50%)</option>
+  </select>
+  <span id="directionBadge" title="Direção desta carta">PT → DE</span>
 </div>
 <div class="stats hidden" id="stats">0 palavras guardadas</div>
 <div id="sessionProgressInfo" class="small" style="margin:8px 0;text-align:center;color:#475569">0 respondidas · ~0 restantes</div>
@@ -459,7 +472,7 @@ const STORAGE_KEY="vocabularyGermanTrainer_v5";
 const SETTINGS_KEY="deutschTrainerSettings_v1"; // mantém os dados existentes da V5
 const MASTER_LIMIT=7;
 
-// V10.8.2.2 — TrainingContext refactor (Stage 2, no visible behaviour change)
+// V10.8.3.0 — Bidirectional training (Stage 3)
 const Direction = Object.freeze({
   A_TO_B: "A_TO_B",
   B_TO_A: "B_TO_A",
@@ -544,10 +557,32 @@ function resolvePresentationDirection(directionSetting=Direction.A_TO_B){
   return directionSetting === Direction.B_TO_A ? Direction.B_TO_A : Direction.A_TO_B;
 }
 
+function getTrainingDirectionSetting(){
+  const value=$("trainingDirection")?.value;
+  return Object.values(Direction).includes(value) ? value : Direction.A_TO_B;
+}
+
+function directionShortLabel(direction){
+  return direction === Direction.B_TO_A ? "DE → PT" : "PT → DE";
+}
+
+function updateDirectionBadge(context=currentTrainingContext){
+  const badge=$("directionBadge");
+  if(!badge) return;
+  if(context){
+    badge.textContent=directionShortLabel(context.direction);
+    badge.title=`Direção desta carta: ${context.questionLanguage.name} → ${context.answerLanguage.name}`;
+    return;
+  }
+  const setting=getTrainingDirectionSetting();
+  badge.textContent=setting===Direction.MIXED ? "MISTO" : directionShortLabel(setting);
+  badge.title=setting===Direction.MIXED ? "A direção é sorteada em cada nova carta" : "Direção do treino";
+}
+
 function buildTrainingContext(card, options={}){
   if(!card) return null;
   const deck = options.deck || activeDeck;
-  const direction = resolvePresentationDirection(options.direction || Direction.A_TO_B);
+  const direction = resolvePresentationDirection(options.direction || getTrainingDirectionSetting());
   const questionSide = direction === Direction.B_TO_A ? "B" : "A";
   const answerSide = questionSide === "A" ? "B" : "A";
   const questionLanguage = questionSide === "A" ? deck.languageA : deck.languageB;
@@ -642,7 +677,7 @@ function pauseRecognitionForAppSpeech(){
   }
 }
 
-// Generic TTS entry point for future language pairs. Existing PT/DE wrappers remain active in Stage 2 for compatibility.
+// Generic TTS entry point for future language pairs. Existing PT/DE wrappers remain available for compatibility.
 function speakText(text, languageCode, options={}){
   if(!("speechSynthesis" in window)) return null;
   const utterance = new SpeechSynthesisUtterance(String(text || ""));
@@ -2363,6 +2398,7 @@ due.sort((a,b)=>{
 const pick=due[0];
 currentCard=pick.c;
 currentTrainingContext=buildTrainingContext(currentCard);
+updateDirectionBadge(currentTrainingContext);
 markSessionWord(currentCard);
 practiceQueue.splice(pick.i,1);
 currentCard.sessionAppearances=(currentCard.sessionAppearances||0)+1;
@@ -3922,7 +3958,7 @@ function downloadTemplate(){downloadFile("modelo_vocabulario_alemao.csv","Portug
 function downloadFile(name,content,type){const blob=new Blob([content],{type:type+";charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 
 
-const SETTINGS_CONTROL_IDS = ["adaptiveScheduler", "autoMicDelay", "autoMicEnabled", "autoMicMaxSilentMinutes", "backupReminder", "criticalThreshold", "initialReviewDays", "masterThreshold", "maxCardsPerSession", "maxNewWords", "memoryArticleError", "memoryCorrect", "memoryGrammarError", "memoryMemoryError", "minExposuresToMaster", "minMemoryLevel", "minPhrasesPerSession", "minRepeatDistance", "minReviewsPerSession", "minStreakToMaster", "modeHardCards", "modeHardMemoryMult", "modeHardSpacingMult", "modeHardStabilityMult", "modeHardXpMult", "modeIntenseCards", "modeIntenseMemoryMult", "modeIntenseNewPct", "modeIntenseSpacingMult", "modeIntenseStabilityMult", "modeIntenseXpMult", "modeNormalCards", "modeNormalMemoryMult", "modeNormalSpacingMult", "modeNormalStabilityMult", "modeNormalXpMult", "modePhrasesActivePct", "modePhrasesCards", "modePhrasesMemoryMult", "modePhrasesSpacingMult", "modePhrasesStabilityMult", "modePhrasesXpMult", "modeReviewsCards", "modeReviewsDuePct", "modeReviewsMemoryMult", "modeReviewsSpacingMult", "modeReviewsStabilityMult", "modeReviewsXpMult", "repeatCriticalWords", "repeatSpacingMode", "requireArticle", "reviewGrowthFactor", "sessionExcludedThreshold", "showWordInspector", "spacingHighMax", "spacingHighMin", "spacingLowMax", "spacingLowMin", "spacingMidMax", "spacingMidMin", "spacingVeryHighMax", "spacingVeryHighMin", "speakArticle", "speakPortuguese", "speechEnabled", "stabilityArticleError", "stabilityCorrect", "stabilityDueCorrect", "stabilityDueMemoryError", "stabilityGrammarError", "stabilityMasterThreshold", "stabilityMemoryError", "strictGrammarRecognition", "targetDistinctWords", "voiceDebug", "voiceEnabled", "voiceStrictness", "waitForPortugueseBeforeMic", "xpArticleError", "xpCorrect", "xpDueCorrect", "xpDueMemoryError", "xpGrammarError", "xpMemoryError", "xpSkip"];
+const SETTINGS_CONTROL_IDS = ["trainingDirection", "adaptiveScheduler", "autoMicDelay", "autoMicEnabled", "autoMicMaxSilentMinutes", "backupReminder", "criticalThreshold", "initialReviewDays", "masterThreshold", "maxCardsPerSession", "maxNewWords", "memoryArticleError", "memoryCorrect", "memoryGrammarError", "memoryMemoryError", "minExposuresToMaster", "minMemoryLevel", "minPhrasesPerSession", "minRepeatDistance", "minReviewsPerSession", "minStreakToMaster", "modeHardCards", "modeHardMemoryMult", "modeHardSpacingMult", "modeHardStabilityMult", "modeHardXpMult", "modeIntenseCards", "modeIntenseMemoryMult", "modeIntenseNewPct", "modeIntenseSpacingMult", "modeIntenseStabilityMult", "modeIntenseXpMult", "modeNormalCards", "modeNormalMemoryMult", "modeNormalSpacingMult", "modeNormalStabilityMult", "modeNormalXpMult", "modePhrasesActivePct", "modePhrasesCards", "modePhrasesMemoryMult", "modePhrasesSpacingMult", "modePhrasesStabilityMult", "modePhrasesXpMult", "modeReviewsCards", "modeReviewsDuePct", "modeReviewsMemoryMult", "modeReviewsSpacingMult", "modeReviewsStabilityMult", "modeReviewsXpMult", "repeatCriticalWords", "repeatSpacingMode", "requireArticle", "reviewGrowthFactor", "sessionExcludedThreshold", "showWordInspector", "spacingHighMax", "spacingHighMin", "spacingLowMax", "spacingLowMin", "spacingMidMax", "spacingMidMin", "spacingVeryHighMax", "spacingVeryHighMin", "speakArticle", "speakPortuguese", "speechEnabled", "stabilityArticleError", "stabilityCorrect", "stabilityDueCorrect", "stabilityDueMemoryError", "stabilityGrammarError", "stabilityMasterThreshold", "stabilityMemoryError", "strictGrammarRecognition", "targetDistinctWords", "voiceDebug", "voiceEnabled", "voiceStrictness", "waitForPortugueseBeforeMic", "xpArticleError", "xpCorrect", "xpDueCorrect", "xpDueMemoryError", "xpGrammarError", "xpMemoryError", "xpSkip"];
 
 function readControlValue(el){
  if(!el) return undefined;
@@ -3970,6 +4006,7 @@ function applyImportedSettings(settings){
    });
    saveSettings();
    if(typeof updateTrainingModeInfo === "function") updateTrainingModeInfo();
+   if(typeof updateDirectionBadge === "function") updateDirectionBadge();
    if(typeof renderWordList === "function") renderWordList();
    if(typeof updateStats === "function") updateStats();
    return true;
@@ -4008,7 +4045,7 @@ function backupFilename(ext){
   return `deutsch-trainer-backup-${stamp}.${ext}`;
 }
 function createBackupJson(){
-  const backup = {app:"Deutsch Trainer",version:"10.8.2.2-stage2",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
+  const backup = {app:"Deutsch Trainer",version:"10.8.3.0-stage3",createdAt:new Date().toISOString(),settings:collectSettings(),vocabulary};
   downloadFile(backupFilename("json"), JSON.stringify(backup,null,2), "application/json");
   changesSinceBackup=0;
   localStorage.setItem("changesSinceBackup","0");
@@ -4225,6 +4262,15 @@ try{
      startPractice();
    };
    updateTrainingModeInfo();
+ }
+ if($("trainingDirection")){
+   $("trainingDirection").onchange=()=>{
+     saveSettings();
+     currentTrainingContext=null;
+     updateDirectionBadge();
+     startPractice();
+   };
+   updateDirectionBadge();
  }
 }catch(e){}
 
